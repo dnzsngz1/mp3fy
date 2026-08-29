@@ -8,7 +8,6 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=for-the-badge)
 
 **Spotify Çalma Listesi, Albüm ve Şarkı bağlantılarından yüksek kaliteli MP3 (320kbps) dönüştürücü ve ID3 etiketleyici.**  
@@ -119,7 +118,6 @@ mp3fy/
 ├── run.bat                 # Windows başlatıcı betik
 ├── KULLANIM_KILAVUZU.md    # Detaylı Türkçe kullanım kılavuzu
 ├── USER_GUIDE.md           # Detailed English user guide
-├── LICENSE                 # MIT Lisansı
 └── README.md               # Proje belgelendirmesi
 ```
 
@@ -131,9 +129,3 @@ mp3fy/
 source .venv/bin/activate
 python -m unittest discover tests
 ```
-
----
-
-## 📄 Lisans / License
-
-Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.
