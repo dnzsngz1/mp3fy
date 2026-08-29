@@ -1,4 +1,4 @@
-# 🎵 MP3fy - Spotify MP3 İndirici & Dönüştürücü
+# 🎵 MP3fy - Spotify to MP3 Converter & Downloader
 
 <div align="center">
 
@@ -11,51 +11,42 @@
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=for-the-badge)
 
-**Spotify Çalma Listesi, Albüm ve Şarkı bağlantılarından yüksek kaliteli MP3 (320kbps) dönüştürücü ve ID3 etiketleyici.**
-
-[Özellikler](#-özellikler) • [Ekran Görüntüleri & Temalar](#-temalar-siyah--beyaz) • [Kurulum](#-kurulum) • [Kullanım](#-kullanım) • [CLI Modu](#-cli-komut-satırı-kullanımı) • [Gereksinimler](#-sistem-gereksinimleri)
-
-</div>
+**Spotify Çalma Listesi, Albüm ve Şarkı bağlantılarından yüksek kaliteli MP3 (320kbps) dönüştürücü ve ID3 etiketleyici.**  
+*Convert and download Spotify playlists, albums, and tracks to 320kbps MP3 files with full ID3 metadata and album art.*
 
 ---
 
-## ✨ Özellikler
+📖 **Kılavuzlar / Guides:**  
+🇹🇷 [**Türkçe Kullanım Kılavuzu**](KULLANIM_KILAVUZU.md) | 🇬🇧 [**English User Guide**](USER_GUIDE.md)
 
-- 🎧 **Spotify'dan Kolay İndirme:** Çalma listesi (Playlist), Albüm (Album) veya Tekil Şarkı (Track) bağlantılarını doğrudan yapıştırarak anında indirin.
-- 📂 **Kullanıcı Ev Dizini `~/Music` Entegrasyonu:** İndirilen tüm MP3'ler doğrudan kullanıcının kendi ev dizinindeki `~/Music` (veya `~/Müzik`) klasörüne düzenli bir şekilde kaydedilir. Arayüzdeki *"Music Klasörü"* butonuyla tek tıkla dosya yöneticisinde açabilirsiniz.
-- 🏷️ **Eksiksiz ID3 Etiketleme (Metadata):**
-  - 🖼️ **Yüksek Çözünürlüklü Albüm Kapağı (APIC Cover Art):** Spotify'daki orijinal kapak görseli MP3 dosyasına doğrudan gömülür.
-  - 🎤 **Sanatçı (Artist / Performer):** `TPE1`
-  - 💿 **Albüm Adı:** `TALB`
-  - 🎵 **Şarkı Adı (Title):** `TIT2`
-  - 📅 **Çıkış Yılı:** `TDRC` / `TYER`
-  - 🔢 **Parça Numarası:** `TRCK` (Örn: 1/12)
-- 🌓 **Siyah / Beyaz Tema Düğmesi (Dark / Light Theme):** Modern, göz yormayan Koyu (Siyah) tema ve pırıl pırıl Açık (Beyaz) tema arasında tek tıkla geçiş yapın. Tema seçiminiz tarayıcıda otomatik olarak hatırlanır.
-- 🚀 **Gerçek Zamanlı WebSocket İlerlemesi:** İndirme yüzdesi, hız (MB/s), kalan süre ve dönüştürme durumları anlık olarak güncellenir.
-- 🔊 **Entegre Ses Önizleme:** Şarkıları indirmeden önce veya indirdikten sonra arayüz üzerinden dinleyin.
+---
+
+</div>
+
+## ✨ Temel Özellikler / Key Features
+
+- 🎧 **Spotify'dan Kolay İndirme / Easy Spotify Downloading:** Çalma listesi (Playlist), Albüm (Album) veya Tekil Şarkı (Track) bağlantılarını sıfır yapılandırmayla anında indirin.
+- 📦 **100'lük Bölümleme (Batching / Pagination):** 100, 200, 500+ şarkılık devasa listeleri 100'erli bölümlere ayırır; ister tek tek bölümler halinde (`Bölüm 1`, `Bölüm 2`), ister tek tıkla tümünü indirin.
+- 📁 **Özel İndirme Klasörü Seçimi / Custom Folder Selection:** Şarkıların nereye kaydedileceğini siz belirlersiniz. İster sistem klasör seçicisiyle (Gözat), ister hızlı konumlarla (`Müzik`, `İndirilenler`, `Masaüstü`), ister özel disk yoluyla.
+- 🏷️ **Eksiksiz ID3 Etiketleme / ID3v2.3 Tagging:** Orijinal yüksek çözünürlüklü kapak görseli (APIC), Sanatçı (TPE1), Albüm (TALB), Şarkı Adı (TIT2), Yıl (TDRC) ve Parça No (TRCK).
+- 🌓 **Siyah / Beyaz Cam Teması / Dark & Light Theme:** Modern koyu (Dark) ve açık (Light) cam panelli estetik tasarım.
+- 🌐 **Türkçe & İngilizce Desteği (TR / EN):** Tek tıkla iki dil arasında anında geçiş.
+- 🚀 **Canlı İlerleme / Real-time Progress:** WebSocket ile indirme yüzdesi, hız (MB/s), kalan süre ve dönüştürme durumları canlı izlenir.
+- 🔊 **Entegre Ses Önizleme / Audio Preview:** Şarkıları indirmeden önce veya indirdikten sonra arayüz üzerinden dinleyin.
 - ⚙️ **Özelleştirilebilir Kalite (Bitrate):** 320 kbps (Stüdyo Kalitesi), 256 kbps, 192 kbps veya 128 kbps seçenekleri.
-- 🔑 **Sıfır Yapılandırma Zorunluluğu:** Spotify API anahtarı olmadan hemen çalışır (Gelişmiş kullanıcılar için özel API anahtarı desteği de mevcuttur).
 - 💻 **Hem Web Arayüzü Hem CLI:** İster modern tarayıcı arayüzüyle, ister terminalden tek komutla kullanın.
 
 ---
 
-## 🎨 Temalar (Siyah & Beyaz)
+## 🚀 Hızlı Başlangıç / Quick Start
 
-| 🌙 Koyu (Siyah) Tema | ☀️ Açık (Beyaz) Tema |
-| :---: | :---: |
-| Modern Spotify yeşili detaylara ve cam efektlerine (glassmorphism) sahip gece modu | Temiz, yüksek kontrastlı ve sade gündüz modu |
-
----
-
-## 🚀 Kurulum
-
-### 1. Depoyu Klonlayın
+### 1. Depoyu Klonlayın / Clone Repository
 ```bash
 git clone https://github.com/kullaniciadi/mp3fy.git
 cd mp3fy
 ```
 
-### 2. Tek Tıkla Başlatma (Önerilen)
+### 2. Tek Tıkla Başlatma / Launch
 
 #### Linux / macOS:
 ```bash
@@ -69,111 +60,80 @@ chmod +x run.sh
 run.bat
 ```
 
----
-
-### 3. Manuel Kurulum
-
-Python sanal ortamı oluşturup bağımlılıkları yükleyin:
-
-```bash
-# Sanal ortam oluşturma
-python3 -m venv .venv
-
-# Sanal ortamı aktifleştirme (Linux/macOS)
-source .venv/bin/activate
-
-# Sanal ortamı aktifleştirme (Windows CMD / PowerShell)
-# .venv\Scripts\activate.bat   veya   .venv\Scripts\Activate.ps1
-
-# Bağımlılıkları yükleme
-pip install -r requirements.txt
-
-# Uygulamayı başlatma
-python main.py
-```
-
-Uygulama otomatik olarak varsayılan tarayıcınızda `http://127.0.0.1:8888` adresinde açılacaktır.
+> Başlatıcı script sanal ortamı (`.venv`) kurar, bağımlılıkları yükler ve tarayıcınızda `http://localhost:8888` adresinde uygulamayı açar.
 
 ---
 
-## 💻 CLI (Komut Satırı) Kullanımı
+## 🛠️ Sistem Gereksinimleri / Prerequisites
 
-Web arayüzünü açmadan doğrudan terminalden de çalma listesi indirebilirsiniz:
+1. **Python 3.10+**
+2. **FFmpeg:** MP3 dönüştürme ve ses işleme için gereklidir:
+   - **Ubuntu / Debian:** `sudo apt update && sudo apt install ffmpeg`
+   - **Arch Linux:** `sudo pacman -S ffmpeg`
+   - **macOS:** `brew install ffmpeg`
+   - **Windows:** `winget install Gyan.FFmpeg` veya [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) adresinden indirin.
+
+---
+
+## 💻 CLI (Komut Satırı) Kullanımı / CLI Usage
 
 ```bash
-# Çalma listesi indirme
+# Çalma listesi indirme / Download playlist
 python main.py "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
 
 # Belirli bir klasöre ve 320kbps kalitede indirme
-python main.py "https://open.spotify.com/track/4LfCY65LvojKjWEnU7fNN4" --output music/ --bitrate 320
+python main.py "https://open.spotify.com/track/4LfCY65LvojKjWEnU7fNN4" --output ~/Music --bitrate 320
 
 # Eşzamanlı 3 iş parçacığı ile indirme
 python main.py "https://open.spotify.com/album/4m2880jivSbbyEGAKfITCa" --workers 3
 ```
 
-### CLI Seçenekleri:
-- `--web`: Web arayüzünü zorla başlatır.
-- `--port 8888`: Web sunucu portu.
-- `-o, --output music/`: İndirilen MP3'lerin kaydedileceği hedef klasör.
-- `-b, --bitrate 320`: Ses kalitesi (`320`, `256`, `192`, `128`).
-- `-w, --workers 2`: Eşzamanlı indirme iş parçacığı sayısı.
-
 ---
 
-## 🛠️ Sistem Gereksinimleri
-
-1. **Python 3.10 veya daha yenisi**
-2. **FFmpeg:** MP3 dönüştürme ve ses işleme için sisteminizde `ffmpeg` kurulu olmalıdır:
-   - **Ubuntu / Debian:** `sudo apt update && sudo apt install ffmpeg`
-   - **Arch Linux:** `sudo pacman -S ffmpeg`
-   - **macOS:** `brew install ffmpeg`
-   - **Windows:** `winget install Gyan.FFmpeg` veya [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) adresinden indirip PATH ortam değişkenine ekleyin.
-
----
-
-## 📁 Proje Dizin Yapısı
+## 📁 Proje Yapısı / Project Structure
 
 ```
 mp3fy/
 ├── core/
 │   ├── __init__.py
-│   ├── spotify.py          # Spotify URL ayrıştırma ve metadata çekici
+│   ├── spotify.py          # Spotify URL ayrıştırma, metadata ve 100'lük bölümleme
 │   ├── downloader.py       # yt-dlp ile ses indirme ve ffmpeg dönüştürme
 │   ├── tagger.py           # mutagen ile ID3 etiketleme ve kapak görseli gömme
-│   └── utils.py            # Dosya adı temizleme, ev dizini (~/Music) tespiti
+│   └── utils.py            # Klasör seçici, ev dizini tespiti ve dosya adı temizleme
 ├── web/
 │   ├── static/
-│   │   ├── css/
-│   │   │   └── style.css   # Dark/Light tema stilleri, responsive UI
+│   │   ├── css/            # Özel stiller
 │   │   ├── js/
-│   │   │   └── app.js      # WebSocket bağlantısı, tema geçişi, canlı indirme paneli
+│   │   │   └── app.js      # Çok dilli (TR/EN) frontend controller, WebSocket & oynatıcı
 │   │   └── img/
 │   │       ├── logo.jpg    # Uygulama logosu
 │   │       └── placeholder.svg
 │   └── templates/
-│       └── index.html      # Ana sayfa, tema düğmesi, indirme tablosu
+│       └── index.html      # Glassmorphic arayüz, tema/dil düğmeleri, bölüm sekmeleri
 ├── tests/
 │   └── test_core.py        # Birim testleri
 ├── app.py                  # FastAPI/Uvicorn ana uygulama ve WebSocket sunucusu
-├── main.py                 # CLI ve uygulama başlatıcı giriş noktası
+├── main.py                 # CLI ve başlatıcı giriş noktası
 ├── requirements.txt        # Python paket bağımlılıkları
-├── .gitignore              # Git yoksayma dosyası
 ├── run.sh                  # Linux/macOS başlatıcı betik
 ├── run.bat                 # Windows başlatıcı betik
+├── KULLANIM_KILAVUZU.md    # Detaylı Türkçe kullanım kılavuzu
+├── USER_GUIDE.md           # Detailed English user guide
 ├── LICENSE                 # MIT Lisansı
 └── README.md               # Proje belgelendirmesi
 ```
 
 ---
 
-## 🧪 Testleri Çalıştırma
+## 🧪 Testleri Çalıştırma / Running Tests
 
 ```bash
+source .venv/bin/activate
 python -m unittest discover tests
 ```
 
 ---
 
-## 📄 Lisans
+## 📄 Lisans / License
 
 Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.
