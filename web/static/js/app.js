@@ -1,6 +1,6 @@
 /**
  * MP3fy - Modern Spotify MP3 Downloader
- * Frontend JavaScript Controller with 100-Track Batching & screen.png UI Design
+ * Frontend JavaScript Controller with 100-Track Batching & Tailwind Glassmorphic UI
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // DOM Elements
   const htmlDoc = document.documentElement;
   const themeToggleBtn = document.getElementById("theme-toggle");
+  const themeIcon = document.getElementById("theme-icon");
   const themeLabelText = document.getElementById("theme-label-text");
 
   const fetchForm = document.getElementById("fetch-form");
@@ -93,18 +94,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setTheme(theme) {
-    htmlDoc.setAttribute("data-theme", theme);
-    localStorage.setItem("mp3fy_theme", theme);
     if (theme === "dark") {
-      themeLabelText.textContent = "Karanlık";
+      htmlDoc.classList.add("dark");
+      htmlDoc.setAttribute("data-theme", "dark");
+      if (themeIcon) themeIcon.textContent = "dark_mode";
+      if (themeLabelText) themeLabelText.textContent = "Karanlık";
     } else {
-      themeLabelText.textContent = "Aydınlık";
+      htmlDoc.classList.remove("dark");
+      htmlDoc.setAttribute("data-theme", "light");
+      if (themeIcon) themeIcon.textContent = "light_mode";
+      if (themeLabelText) themeLabelText.textContent = "Aydınlık";
     }
+    localStorage.setItem("mp3fy_theme", theme);
   }
 
   themeToggleBtn.addEventListener("click", () => {
-    const currentTheme = htmlDoc.getAttribute("data-theme") || "dark";
-    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    const isDark = htmlDoc.classList.contains("dark");
+    const newTheme = isDark ? "light" : "dark";
     setTheme(newTheme);
     showToast(
       newTheme === "dark" ? "Karanlık tema etkinleştirildi." : "Aydınlık tema etkinleştirildi.",
@@ -337,7 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // If 100 or fewer tracks, single batch mode
       btnDownloadActiveBatch.classList.add("hidden");
       const btnAll = document.createElement("button");
-      btnAll.className = "batch-pill-btn active";
+      btnAll.className = "bg-primary text-on-primary-fixed font-bold px-3 py-1 rounded-full text-xs font-label-sm shadow-md";
       btnAll.textContent = `Tüm Şarkılar (${playlist.tracks.length})`;
       btnAll.addEventListener("click", () => {
         activeBatchIndex = 0;
@@ -352,8 +358,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // "Tüm Şarkılar" Tab
     const btnAll = document.createElement("button");
-    btnAll.className = `batch-pill-btn ${activeBatchIndex === 0 ? "active" : ""}`;
-    btnAll.textContent = `✨ Tüm Şarkılar (${playlist.tracks.length})`;
+    btnAll.className = `batch-pill-btn px-3 py-1 rounded-full text-xs font-label-sm transition-all border border-white/5 ${
+      activeBatchIndex === 0
+        ? "bg-primary text-on-primary-fixed font-bold shadow-md"
+        : "bg-surface-container hover:bg-surface-container-high text-on-surface"
+    }`;
+    btnAll.textContent = `✨ Tümü (${playlist.tracks.length})`;
     btnAll.addEventListener("click", () => {
       activeBatchIndex = 0;
       setActiveBatchTab(btnAll);
@@ -365,7 +375,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // 100-Track Batch Tabs
     batches.forEach((b) => {
       const btnBatch = document.createElement("button");
-      btnBatch.className = `batch-pill-btn ${activeBatchIndex === b.batch_index ? "active" : ""}`;
+      btnBatch.className = `batch-pill-btn px-3 py-1 rounded-full text-xs font-label-sm transition-all border border-white/5 ${
+        activeBatchIndex === b.batch_index
+          ? "bg-primary text-on-primary-fixed font-bold shadow-md"
+          : "bg-surface-container hover:bg-surface-container-high text-on-surface"
+      }`;
       btnBatch.textContent = `📦 ${b.name}`;
       btnBatch.addEventListener("click", () => {
         activeBatchIndex = b.batch_index;
@@ -387,9 +401,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setActiveBatchTab(activeButton) {
     document.querySelectorAll(".batch-pill-btn").forEach((btn) => {
-      btn.classList.remove("active");
+      btn.className =
+        "batch-pill-btn px-3 py-1 rounded-full text-xs font-label-sm transition-all border border-white/5 bg-surface-container hover:bg-surface-container-high text-on-surface";
     });
-    activeButton.classList.add("active");
+    activeButton.className =
+      "batch-pill-btn px-3 py-1 rounded-full text-xs font-label-sm transition-all border border-white/5 bg-primary text-on-primary-fixed font-bold shadow-md";
   }
 
   function getVisibleTracks() {
@@ -422,6 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
     visibleTracks.forEach((track, index) => {
       const tr = document.createElement("tr");
       tr.id = `row-${track.id}`;
+      tr.className = "hover:bg-surface-container-highest/30 transition-colors";
       tr.setAttribute("data-song-id", track.id);
 
       const isChecked = selectedSongIds.has(track.id);
@@ -429,40 +446,37 @@ document.addEventListener("DOMContentLoaded", () => {
       const displayIndex = track.track_number || index + 1;
 
       tr.innerHTML = `
-        <td>
-          <label class="custom-checkbox-wrapper">
-            <input type="checkbox" class="track-checkbox" data-id="${track.id}" ${isChecked ? "checked" : ""}>
-            <span class="checkbox-custom"></span>
-          </label>
+        <td class="py-3 px-4">
+          <input type="checkbox" class="track-checkbox rounded border-white/20 bg-surface-container text-primary focus:ring-primary w-4 h-4 cursor-pointer" data-id="${track.id}" ${isChecked ? "checked" : ""}>
         </td>
-        <td class="track-index">${displayIndex}</td>
-        <td>
-          <div class="track-main-cell">
-            <img src="${track.cover_url || "/static/img/placeholder.svg"}" alt="Thumb" class="track-thumb" />
-            <div class="track-meta">
-              <span class="track-name" title="${track.title}">${escapeHtml(track.title)}</span>
-              <span class="track-artist" title="${track.artist}">${escapeHtml(track.artist)}</span>
+        <td class="py-3 px-2 text-center text-on-surface-variant font-label-sm text-xs">${displayIndex}</td>
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-3">
+            <img src="${track.cover_url || "/static/img/placeholder.svg"}" alt="Thumb" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-sm border border-white/5" />
+            <div class="flex flex-col min-w-0">
+              <span class="font-bold text-on-surface truncate max-w-xs md:max-w-md text-sm" title="${escapeHtml(track.title)}">${escapeHtml(track.title)}</span>
+              <span class="text-on-surface-variant text-xs truncate max-w-xs md:max-w-md" title="${escapeHtml(track.artist)}">${escapeHtml(track.artist)}</span>
             </div>
           </div>
         </td>
-        <td class="track-album" title="${track.album}">${escapeHtml(track.album || "-")}</td>
-        <td class="track-duration">${track.duration_formatted}</td>
-        <td>
-          <div class="status-badge-container" id="status-container-${track.id}">
+        <td class="py-3 px-4 text-on-surface-variant text-xs hidden md:table-cell truncate max-w-[180px]" title="${escapeHtml(track.album || "-")}">${escapeHtml(track.album || "-")}</td>
+        <td class="py-3 px-4 text-center text-on-surface-variant font-label-sm text-xs">${track.duration_formatted}</td>
+        <td class="py-3 px-4">
+          <div id="status-container-${track.id}">
             ${renderStatusBadge(task)}
           </div>
         </td>
-        <td>
-          <div class="track-actions">
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center justify-end gap-1">
             ${
               track.preview_url || (task && task.status === "completed")
-                ? `<button class="btn btn-icon-dark btn-sm btn-play" data-id="${track.id}" title="Dinle / Önizle">
-                     <i class="fa-solid fa-play"></i>
+                ? `<button class="p-1.5 hover:bg-surface-container rounded-lg text-primary transition-colors btn-play" data-id="${track.id}" title="Dinle / Önizle">
+                     <span class="material-symbols-outlined text-sm">play_arrow</span>
                    </button>`
                 : ""
             }
-            <button class="btn btn-secondary btn-sm btn-download-single" data-id="${track.id}" title="Bu Şarkıyı İndir">
-              <i class="fa-solid fa-download"></i>
+            <button class="bg-surface-container hover:bg-surface-container-high text-on-surface px-2.5 py-1 rounded-lg text-xs font-label-sm font-semibold transition-colors flex items-center gap-1 btn-download-single border border-white/5" data-id="${track.id}" title="Bu Şarkıyı İndir">
+              <span class="material-symbols-outlined text-xs">download</span>
               <span>İndir</span>
             </button>
           </div>
@@ -516,44 +530,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderStatusBadge(task) {
     if (!task) {
-      return `<span class="status-badge status-queued"><i class="fa-regular fa-circle"></i> Hazır</span>`;
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-medium bg-surface-container-highest/60 text-on-surface-variant"><span class="w-1.5 h-1.5 rounded-full bg-on-surface-variant/40"></span> Hazır</span>`;
     }
 
     const s = task.status;
     if (s === "queued") {
-      return `<span class="status-badge status-queued"><i class="fa-solid fa-clock"></i> Kuyrukta</span>`;
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-medium bg-surface-container text-on-surface-variant"><span class="material-symbols-outlined text-[12px] animate-pulse">schedule</span> Kuyrukta</span>`;
     } else if (s === "searching") {
-      return `<span class="status-badge status-searching"><i class="fa-solid fa-magnifying-glass fa-spin"></i> Aranıyor...</span>`;
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-medium bg-info/20 text-info"><span class="material-symbols-outlined text-[12px] animate-spin">sync</span> Aranıyor...</span>`;
     } else if (s === "downloading") {
       return `
-        <span class="status-badge status-downloading">
-          <i class="fa-solid fa-arrow-down fa-bounce"></i> %${task.progress.toFixed(0)} (${task.speed || "..."})
-        </span>
-        <div class="mini-progress-bar">
-          <div class="mini-progress-fill" style="width: ${task.progress}%;"></div>
+        <div class="flex flex-col gap-1 w-full max-w-[130px]">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-label-sm font-bold bg-warning/20 text-warning">
+            <span class="material-symbols-outlined text-[11px] animate-bounce">download</span> %${task.progress.toFixed(0)} (${task.speed || "..."})
+          </span>
+          <div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+            <div class="h-full bg-warning rounded-full transition-all duration-200" style="width: ${task.progress}%;"></div>
+          </div>
         </div>
       `;
     } else if (s === "converting") {
-      return `<span class="status-badge status-converting"><i class="fa-solid fa-gear fa-spin"></i> MP3 Dönüştürülüyor</span>`;
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-medium bg-primary/20 text-primary"><span class="material-symbols-outlined text-[12px] animate-spin">settings</span> MP3 İşleniyor</span>`;
     } else if (s === "tagging") {
-      return `<span class="status-badge status-tagging"><i class="fa-solid fa-tag fa-beat"></i> Etiketler Yazılıyor</span>`;
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-medium bg-cyan-500/20 text-cyan-400"><span class="material-symbols-outlined text-[12px]">label</span> Etiketleniyor</span>`;
     } else if (s === "completed") {
       return `
-        <span class="status-badge status-completed">
-          <i class="fa-solid fa-circle-check"></i> Tamamlandı ${task.file_size_mb ? `(${task.file_size_mb} MB)` : ""}
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-bold bg-green-500/20 text-green-400">
+          <span class="material-symbols-outlined text-[12px]">check_circle</span> Tamamlandı ${task.file_size_mb ? `(${task.file_size_mb} MB)` : ""}
         </span>
       `;
     } else if (s === "error") {
       return `
-        <span class="status-badge status-error" title="${escapeHtml(task.error_message || "Hata")}">
-          <i class="fa-solid fa-circle-xmark"></i> Hata
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm font-bold bg-error/20 text-error" title="${escapeHtml(task.error_message || "Hata")}">
+          <span class="material-symbols-outlined text-[12px]">error</span> Hata
         </span>
       `;
     } else if (s === "cancelled") {
-      return `<span class="status-badge status-cancelled"><i class="fa-solid fa-ban"></i> İptal Edildi</span>`;
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-label-sm bg-surface-container text-on-surface-variant"><span class="material-symbols-outlined text-[12px]">block</span> İptal</span>`;
     }
 
-    return `<span class="status-badge status-queued">${s}</span>`;
+    return `<span class="px-2 py-0.5 rounded text-xs bg-surface-container text-on-surface">${s}</span>`;
   }
 
   function updateTrackRow(task) {
@@ -728,7 +744,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ==========================================
      8. FLOATING AUDIO PLAYER
-     ========================================= */
+     ========================================== */
   function playAudioPreview(song, task) {
     let audioSrc = "";
     if (task && task.status === "completed" && task.file_path) {
@@ -762,21 +778,27 @@ document.addEventListener("DOMContentLoaded", () => {
      ========================================== */
   function showToast(message, type = "info") {
     const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
+    toast.className = `glass-panel px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-label-md font-semibold border transition-all animate-bounce ${
+      type === "success"
+        ? "border-green-500/30 text-green-400"
+        : type === "error"
+        ? "border-error/30 text-error"
+        : "border-primary/30 text-primary"
+    }`;
 
-    let icon = "fa-solid fa-circle-info";
-    if (type === "success") icon = "fa-solid fa-circle-check";
-    if (type === "error") icon = "fa-solid fa-circle-exclamation";
+    let icon = "info";
+    if (type === "success") icon = "check_circle";
+    if (type === "error") icon = "error";
 
     toast.innerHTML = `
-      <i class="${icon}"></i>
+      <span class="material-symbols-outlined text-sm">${icon}</span>
       <span>${escapeHtml(message)}</span>
     `;
 
     toastContainer.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.animation = "slideInRight 0.3s ease reverse";
+      toast.style.opacity = "0";
       setTimeout(() => toast.remove(), 300);
     }, 4000);
   }

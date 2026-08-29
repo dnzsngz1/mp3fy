@@ -1,277 +1,419 @@
 <!DOCTYPE html>
-<html lang="tr" data-theme="dark">
+<html class="dark" lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP3fy - Listenizin Gerçek Sahibi Olun!</title>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>MP3fy - Spotify MP3 İndirici</title>
   <link rel="icon" type="image/jpeg" href="/static/img/logo.jpg">
   
-  <!-- Google Fonts: Plus Jakarta Sans -->
+  <!-- Tailwind CSS with plugins -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  
+  <!-- Google Fonts: Hanken Grotesk, JetBrains Mono, Material Symbols -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  
-  <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    body { font-family: 'Hanken Grotesk', sans-serif; }
+    .glass-panel {
+      background: rgba(11, 19, 38, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    html:not(.dark) .glass-panel {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+    /* Material symbol fill */
+    .material-symbols-fill {
+      font-variation-settings: 'FILL' 1;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(221, 183, 255, 0.2);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(221, 183, 255, 0.4);
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "error": "#ffb4ab",
+            "on-tertiary-fixed-variant": "#2f2ebe",
+            "on-primary": "#490080",
+            "surface-tint": "#ddb7ff",
+            "inverse-surface": "#dae2fd",
+            "on-background": "#dae2fd",
+            "surface": "#0b1326",
+            "on-error-container": "#ffdad6",
+            "secondary-fixed-dim": "#bcc7de",
+            "on-primary-container": "#400071",
+            "surface-container-highest": "#2d3449",
+            "tertiary-fixed-dim": "#c0c1ff",
+            "surface-container-low": "#131b2e",
+            "on-tertiary-container": "#0d0096",
+            "surface-container-lowest": "#060e20",
+            "tertiary-fixed": "#e1e0ff",
+            "background": "#0b1326",
+            "on-primary-fixed": "#2c0051",
+            "on-secondary-fixed-variant": "#3c475a",
+            "secondary-fixed": "#d8e3fb",
+            "outline-variant": "#4d4354",
+            "on-secondary-container": "#aeb9d0",
+            "surface-bright": "#31394d",
+            "surface-dim": "#0b1326",
+            "error-container": "#93000a",
+            "on-tertiary": "#1000a9",
+            "inverse-on-surface": "#283044",
+            "on-secondary-fixed": "#111c2d",
+            "surface-container": "#171f33",
+            "on-tertiary-fixed": "#07006c",
+            "secondary": "#bcc7de",
+            "tertiary": "#c0c1ff",
+            "primary-fixed": "#f0dbff",
+            "primary-container": "#b76dff",
+            "primary": "#ddb7ff",
+            "on-secondary": "#263143",
+            "tertiary-container": "#8083ff",
+            "secondary-container": "#3e495d",
+            "surface-container-high": "#222a3d",
+            "on-surface-variant": "#cfc2d6",
+            "on-error": "#690005",
+            "primary-fixed-dim": "#ddb7ff",
+            "outline": "#988d9f",
+            "on-surface": "#dae2fd",
+            "on-primary-fixed-variant": "#6900b3",
+            "surface-variant": "#2d3449",
+            "inverse-primary": "#842bd2"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin-desktop": "48px",
+            "margin-mobile": "16px",
+            "lg": "2.5rem",
+            "max-width": "1200px",
+            "gutter": "24px",
+            "md": "1.5rem",
+            "base": "4px",
+            "sm": "1rem",
+            "xs": "0.5rem",
+            "xl": "4rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Hanken Grotesk"],
+            "body-md": ["Hanken Grotesk"],
+            "headline-sm": ["Hanken Grotesk"],
+            "body-lg": ["Hanken Grotesk"],
+            "label-sm": ["JetBrains Mono"],
+            "body-sm": ["Hanken Grotesk"],
+            "headline-lg-mobile": ["Hanken Grotesk"],
+            "headline-md": ["Hanken Grotesk"],
+            "label-md": ["JetBrains Mono"]
+          },
+          "fontSize": {
+            "headline-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+            "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+            "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+            "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-md": ["30px", { "lineHeight": "38px", "fontWeight": "600" }],
+            "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
-  <!-- Ambient Atmospheric Lighting -->
-  <div class="ambient-glow ambient-1"></div>
-  <div class="ambient-glow ambient-2"></div>
+<body class="bg-background text-on-surface min-h-screen flex flex-col relative overflow-x-hidden transition-colors duration-300">
+  
+  <!-- Background Atmospheric Image -->
+  <div class="fixed inset-0 z-0 pointer-events-none">
+    <img class="w-full h-full object-cover opacity-30 mix-blend-overlay" 
+         src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMlFudUVVlyWwrBYVK7NLGJeNB6BVNfNquIOa3gEdfJzllBiNnUtWJgM3hTXRuXW5gv3NN_0l2FxSmHHOUdXnEKbDPb3V59wyiKfVftMnHFNSdVPvOIMRYaqmh5BUHXeGaK5s_B1wu6QtDgL4EEkHthAlIWiZ3MiCitqL01Y_OJBoPM7kg0oidzaztLwIz8AcisrvZ_EImnRly2kKyG9hNRammYSB8oIJSoqyjcwZ2sfFYnbEtMAk" 
+         alt="Background Ambient">
+    <div class="absolute inset-0 bg-background/70 backdrop-blur-[2px]"></div>
+  </div>
 
-  <!-- Header matching screen.png -->
-  <header class="app-header">
-    <div class="container header-content">
-      <div class="logo-group">
-        <div class="logo-icon-wrapper">
-          <img src="/static/img/logo.jpg" alt="MP3fy Logo" class="app-logo-img" />
-        </div>
-        <div class="logo-text">
-          <span class="logo-title">MP3<span class="brand-accent">fy</span></span>
-        </div>
-      </div>
-
-      <div class="header-actions">
-        <!-- Open Music Folder Button (Lavender Pill Button) -->
-        <button class="btn btn-lavender" id="btn-open-folder" title="Ev dizinindeki 'Music' klasörünü aç">
-          <i class="fa-regular fa-folder-open"></i>
-          <span class="btn-text">Music Klasörü</span>
-        </button>
-
-        <!-- Settings Button -->
-        <button class="btn btn-icon-dark" id="btn-settings-open" title="Ayarlar">
-          <i class="fa-solid fa-gear"></i>
-        </button>
-
-        <!-- Siyah / Beyaz Tema Düğmesi (Theme Switcher Pill) -->
-        <button class="theme-pill-btn" id="theme-toggle" title="Siyah / Beyaz Tema Değiştir" aria-label="Tema Değiştir">
-          <span class="theme-label" id="theme-label-text">Karanlık</span>
-        </button>
-      </div>
+  <!-- Navigation Bar (Top) -->
+  <nav class="relative z-10 w-full px-margin-desktop py-md flex justify-between items-center glass-panel border-b-0 border-white/5 sticky top-0">
+    <div class="flex items-center gap-sm cursor-pointer select-none">
+      <img src="/static/img/logo.jpg" alt="Logo" class="w-9 h-9 rounded-lg object-cover shadow-md border border-white/10" />
+      <span class="font-headline-md text-headline-md font-black tracking-tighter text-on-surface">MP3<span class="text-primary">fy</span></span>
     </div>
-  </header>
+    <div class="flex items-center gap-sm">
+      <!-- Music Folder Button -->
+      <button id="btn-open-folder" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-md py-xs rounded-lg flex items-center gap-xs transition-all duration-200 font-label-md text-label-md font-bold shadow-[0_0_15px_rgba(221,183,255,0.3)]">
+        <span class="material-symbols-outlined text-sm">folder</span>
+        Music Klasörü
+      </button>
 
-  <!-- Main Container -->
-  <main class="main-container container">
-    <!-- Hero / Input Section matching screen.png -->
-    <section class="hero-section hero-card">
-      <div class="hero-text">
-        <h1 class="hero-title">Listenizin gerçek sahibi olun!</h1>
+      <!-- Settings Button -->
+      <button id="btn-settings-open" class="p-xs bg-surface-container hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors flex items-center justify-center" title="Ayarlar">
+        <span class="material-symbols-outlined">settings</span>
+      </button>
+
+      <!-- Siyah / Beyaz Tema Düğmesi -->
+      <button id="theme-toggle" class="p-xs bg-surface-container hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors flex items-center gap-xs px-3" title="Temayı Değiştir">
+        <span id="theme-icon" class="material-symbols-outlined text-sm material-symbols-fill">dark_mode</span>
+        <span id="theme-label-text" class="font-label-sm text-label-sm">Karanlık</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="relative z-10 flex-1 flex flex-col items-center justify-start pt-xl px-margin-desktop w-full max-w-max-width mx-auto gap-xl pb-24">
+    
+    <!-- Hero Search Card -->
+    <div class="glass-panel w-full max-w-4xl rounded-2xl p-xl flex flex-col items-center gap-lg">
+      <div class="text-center space-y-xs">
+        <h1 class="font-headline-lg text-headline-lg text-on-surface">Listenizin gerçek sahibi olun!</h1>
       </div>
 
-      <!-- URL Input Box (Seamless Pill Input Bar) -->
-      <form id="fetch-form" class="url-input-form-v2">
-        <div class="input-pill-container">
-          <i class="fa-solid fa-link input-link-icon"></i>
-          <input 
-            type="url" 
-            id="spotify-url-input" 
-            class="main-input-v2" 
-            placeholder="Spotify Çalma Listesi, Albüm veya Şarkı linki yapıştırın..." 
-            required
-            autocomplete="off"
-          />
-          <div class="input-actions-group">
-            <button type="button" class="btn btn-dark-pill" id="btn-paste" title="Panodan Yapıştır">
-              <i class="fa-regular fa-clipboard"></i>
-              <span>Yapıştır</span>
-            </button>
-            <button type="submit" class="btn btn-lavender-action" id="btn-fetch">
-              <i class="fa-solid fa-arrow-down-to-bracket" id="btn-fetch-icon"></i>
-              <span id="btn-fetch-text">Listeyi Getir</span>
-              <div class="spinner hidden" id="fetch-spinner"></div>
-            </button>
+      <!-- URL Input Bar -->
+      <form id="fetch-form" class="w-full">
+        <div class="w-full flex items-center gap-xs bg-surface-container-highest p-1 rounded-xl border border-white/10 focus-within:border-primary/50 transition-colors">
+          <div class="flex-1 flex items-center pl-sm">
+            <span class="material-symbols-outlined text-primary mr-sm text-lg">link</span>
+            <input id="spotify-url-input" 
+                   class="w-full bg-transparent border-none text-on-surface placeholder-on-surface-variant focus:ring-0 font-body-md text-body-md outline-none" 
+                   placeholder="Spotify Çalma Listesi, Albüm veya Şarkı linki yapıştırın..." 
+                   type="url" 
+                   required
+                   autocomplete="off">
           </div>
+          <button type="button" id="btn-paste" class="bg-surface-container hover:bg-surface-container-high text-on-surface px-sm py-xs rounded-lg flex items-center gap-xs transition-colors font-label-md text-label-md">
+            <span class="material-symbols-outlined text-sm">content_paste</span>
+            Yapıştır
+          </button>
+          <button type="submit" id="btn-fetch" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-lg py-sm rounded-lg flex items-center gap-xs transition-all font-label-md text-label-md font-bold shadow-[0_0_20px_rgba(221,183,255,0.4)]">
+            <span id="btn-fetch-icon" class="material-symbols-outlined">download</span>
+            <span id="btn-fetch-text">Listeyi Getir</span>
+            <div id="fetch-spinner" class="spinner hidden"></div>
+          </button>
         </div>
       </form>
 
       <!-- Quick Sample Buttons -->
-      <div class="sample-links">
-        <span class="sample-label"><i class="fa-solid fa-lightbulb"></i> Örnek Linkler:</span>
-        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M">
-          🔥 Today's Top Hits
-        </button>
-        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO">
-          Peaceful Piano
-        </button>
-        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX10zKzsJ2jva">
-          Viva Latino
-        </button>
-        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd">
-          All Out 2000s (150 Şarkı)
-        </button>
+      <div class="flex items-center gap-sm mt-xs flex-wrap justify-center">
+        <span class="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
+          <span class="material-symbols-outlined text-xs">lightbulb</span> Örnek Linkler:
+        </span>
+        <button class="sample-chip bg-surface-container hover:bg-surface-container-high px-3 py-1 rounded-full text-on-surface font-label-sm text-label-sm transition-colors border border-white/5" data-url="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M">🔥 Today's Top Hits</button>
+        <button class="sample-chip bg-surface-container hover:bg-surface-container-high px-3 py-1 rounded-full text-on-surface font-label-sm text-label-sm transition-colors border border-white/5" data-url="https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO">Peaceful Piano</button>
+        <button class="sample-chip bg-surface-container hover:bg-surface-container-high px-3 py-1 rounded-full text-on-surface font-label-sm text-label-sm transition-colors border border-white/5" data-url="https://open.spotify.com/playlist/37i9dQZF1DX10zKzsJ2jva">Viva Latino</button>
+        <button class="sample-chip bg-surface-container hover:bg-surface-container-high px-3 py-1 rounded-full text-on-surface font-label-sm text-label-sm transition-colors border border-white/5" data-url="https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd">All Out 2000s (150 Şarkı)</button>
       </div>
-    </section>
+    </div>
 
-    <!-- Playlist Overview & 100-Track Batch Sections (Hidden initially) -->
-    <section id="playlist-section" class="playlist-section hidden">
+    <!-- Empty State (Shown initially) -->
+    <div id="empty-state" class="flex flex-col items-center justify-center py-xl mt-lg opacity-80 transition-opacity">
+      <div class="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center mb-sm shadow-lg border border-white/5">
+        <span class="material-symbols-outlined text-3xl text-primary material-symbols-fill">cloud_download</span>
+      </div>
+      <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Henüz bir liste getirilmedi</h3>
+      <p class="font-body-sm text-body-sm text-on-surface-variant text-center max-w-md">Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve "Listeyi Getir" butonuna basın.</p>
+    </div>
+
+    <!-- Playlist & Tracks Section (Hidden initially) -->
+    <div id="playlist-section" class="w-full flex flex-col gap-md hidden">
+      
       <!-- Playlist Summary Card -->
-      <div class="playlist-header-card card">
-        <div class="playlist-cover-wrapper">
-          <img id="pl-cover" src="/static/img/placeholder.svg" alt="Cover Art" class="playlist-cover" />
-          <div class="cover-badge" id="pl-badge">PLAYLIST</div>
+      <div class="glass-panel w-full rounded-2xl p-md md:p-lg flex flex-col md:flex-row items-center gap-md md:gap-lg">
+        <div class="relative w-40 h-40 flex-shrink-0 rounded-xl overflow-hidden shadow-2xl border border-white/10">
+          <img id="pl-cover" src="/static/img/placeholder.svg" alt="Playlist Cover" class="w-full h-full object-cover" />
+          <span id="pl-badge" class="absolute bottom-2 left-2 bg-black/75 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">PLAYLIST</span>
         </div>
 
-        <div class="playlist-info">
-          <div class="pl-type" id="pl-type-label">SPOTIFY ÇALMA LİSTESİ</div>
-          <h2 class="playlist-title" id="pl-title">Çalma Listesi Başlığı</h2>
-          <p class="playlist-desc" id="pl-desc"></p>
+        <div class="flex-1 flex flex-col justify-center gap-xs text-center md:text-left">
+          <span id="pl-type-label" class="text-primary font-label-sm text-label-sm tracking-wider font-bold">SPOTIFY ÇALMA LİSTESİ</span>
+          <h2 id="pl-title" class="font-headline-md text-headline-md text-on-surface leading-tight">Çalma Listesi Başlığı</h2>
+          <p id="pl-desc" class="text-on-surface-variant font-body-sm text-body-sm line-clamp-2"></p>
           
-          <div class="playlist-meta-row">
-            <span class="meta-item"><i class="fa-solid fa-user"></i> <span id="pl-owner">Spotify</span></span>
-            <span class="meta-dot">•</span>
-            <span class="meta-item"><i class="fa-solid fa-music"></i> <span id="pl-track-count">0</span> Şarkı</span>
-            <span class="meta-dot">•</span>
-            <span class="meta-item"><i class="fa-regular fa-clock"></i> <span id="pl-total-duration">--:--</span></span>
-            <span class="meta-dot">•</span>
-            <span class="meta-item"><i class="fa-solid fa-folder-open"></i> <span id="pl-dest-folder">~/Music</span></span>
+          <div class="flex items-center justify-center md:justify-start gap-sm text-on-surface-variant font-label-sm text-label-sm flex-wrap mt-1">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">person</span> <span id="pl-owner">Spotify</span></span>
+            <span>•</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">music_note</span> <span id="pl-track-count">0</span> Şarkı</span>
+            <span>•</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">schedule</span> <span id="pl-total-duration">--:--</span></span>
+            <span>•</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">folder</span> <span id="pl-dest-folder">~/Music</span></span>
           </div>
 
-          <!-- Main Actions -->
-          <div class="playlist-actions-row">
-            <button class="btn btn-lavender-action btn-lg" id="btn-download-all">
-              <i class="fa-solid fa-circle-down"></i>
-              <span>Tümünü İndir (<span id="selected-count-label">0</span>)</span>
+          <!-- Actions Row -->
+          <div class="flex items-center justify-center md:justify-start gap-sm mt-3 flex-wrap">
+            <button id="btn-download-all" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-md py-xs rounded-xl flex items-center gap-xs transition-all font-label-md text-label-md font-bold shadow-[0_0_20px_rgba(221,183,255,0.4)]">
+              <span class="material-symbols-outlined text-base">download_for_offline</span>
+              Tümünü İndir (<span id="selected-count-label">0</span>)
             </button>
-            <button class="btn btn-secondary btn-lg" id="btn-download-active-batch">
-              <i class="fa-solid fa-download"></i>
-              <span id="btn-batch-download-text">Bu Bölümü İndir (100)</span>
+            <button id="btn-download-active-batch" class="bg-surface-container-highest hover:bg-surface-bright text-on-surface px-md py-xs rounded-xl flex items-center gap-xs transition-all font-label-md text-label-md font-semibold border border-white/10">
+              <span class="material-symbols-outlined text-base">batch_prediction</span>
+              <span id="btn-batch-download-text">Bu Bölümü İndir</span>
             </button>
-            <button class="btn btn-danger btn-lg hidden" id="btn-cancel-all">
-              <i class="fa-solid fa-circle-stop"></i>
-              <span>Durdur</span>
+            <button id="btn-cancel-all" class="bg-error-container hover:bg-error text-white px-md py-xs rounded-xl flex items-center gap-xs transition-all font-label-md text-label-md font-semibold hidden">
+              <span class="material-symbols-outlined text-base">stop_circle</span>
+              Durdur
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 100-Track Batch Selector Tabs (Yüzlük Bölümler Çubuğu) -->
-      <div id="batch-tabs-container" class="batch-tabs-container">
-        <div class="batch-tabs-header">
-          <span class="batch-tabs-title"><i class="fa-solid fa-layer-group"></i> Bölümler:</span>
-          <div class="batch-tabs-list" id="batch-tabs-list">
-            <!-- Dynamic Batch Pills e.g. [Tümü (150)] [Bölüm 1 (1-100)] [Bölüm 2 (101-150)] -->
+      <!-- 100-Track Batch Selector Tabs (Yüzlük Bölümler) -->
+      <div id="batch-tabs-container" class="glass-panel w-full rounded-xl p-sm flex items-center justify-between gap-sm flex-wrap">
+        <div class="flex items-center gap-xs flex-wrap">
+          <span class="text-on-surface-variant font-label-sm text-label-sm font-bold uppercase tracking-wider flex items-center gap-1 mr-2">
+            <span class="material-symbols-outlined text-sm text-primary">layers</span> Bölümler:
+          </span>
+          <div id="batch-tabs-list" class="flex items-center gap-xs flex-wrap">
+            <!-- Dynamic Batch Pills e.g. [Tüm Şarkılar (150)] [Bölüm 1 (1-100)] [Bölüm 2 (101-150)] -->
+          </div>
+        </div>
+        <div class="flex items-center gap-xs">
+          <div class="relative flex items-center">
+            <span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-sm">search</span>
+            <input id="track-filter-input" type="text" placeholder="Filtrele..." class="bg-surface-container text-on-surface pl-8 pr-3 py-1 rounded-full text-xs font-label-sm outline-none border border-white/10 focus:border-primary w-36 focus:w-48 transition-all" />
           </div>
         </div>
       </div>
 
       <!-- Overall Progress Card -->
-      <div class="progress-card card" id="overall-progress-card">
-        <div class="progress-header">
-          <div class="progress-info-left">
-            <span class="progress-title"><i class="fa-solid fa-bars-progress"></i> İndirme İlerlemesi</span>
-            <span class="progress-stats" id="overall-stats-text">0 / 0 Tamamlandı</span>
+      <div class="glass-panel w-full rounded-xl p-sm px-md flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-sm">
+            <span class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm text-primary">pending_actions</span> İlerleme Durumu
+            </span>
+            <span id="overall-stats-text" class="text-on-surface-variant font-label-sm text-label-sm">0 / 0 Tamamlandı</span>
           </div>
-          <div class="progress-percent" id="overall-percent-text">0%</div>
+          <span id="overall-percent-text" class="font-headline-sm text-sm text-primary font-bold">0%</span>
         </div>
-        <div class="progress-bar-bg">
-          <div class="progress-bar-fill" id="overall-progress-bar" style="width: 0%;"></div>
-        </div>
-      </div>
-
-      <!-- Tracks Toolbar Controls -->
-      <div class="tracks-toolbar">
-        <div class="toolbar-left">
-          <label class="custom-checkbox-wrapper select-all-box">
-            <input type="checkbox" id="select-all-checkbox" checked>
-            <span class="checkbox-custom"></span>
-            <span class="toolbar-label">Görünenleri Seç</span>
-          </label>
-          <span class="selected-badge" id="selected-badge">0 seçili</span>
-        </div>
-
-        <div class="toolbar-right">
-          <div class="search-filter-box">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="track-filter-input" placeholder="Şarkı veya sanatçı filtrele..." />
-          </div>
+        <div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+          <div id="overall-progress-bar" class="h-full bg-primary rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(221,183,255,0.5)]" style="width: 0%;"></div>
         </div>
       </div>
 
       <!-- Tracks Table -->
-      <div class="table-container card">
-        <table class="tracks-table">
-          <thead>
-            <tr>
-              <th width="40"></th>
-              <th width="50">#</th>
-              <th>Şarkı & Sanatçı</th>
-              <th>Albüm</th>
-              <th width="80"><i class="fa-regular fa-clock"></i> Süre</th>
-              <th width="200">Durum</th>
-              <th width="140" style="text-align: right;">İşlem</th>
-            </tr>
-          </thead>
-          <tbody id="tracks-tbody">
-            <!-- Dynamic Track Rows -->
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <div class="glass-panel w-full rounded-2xl overflow-hidden border border-white/5">
+        <div class="px-md py-sm bg-surface-container/50 flex justify-between items-center border-b border-white/5">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" id="select-all-checkbox" checked class="rounded border-white/20 bg-surface-container text-primary focus:ring-primary w-4 h-4 cursor-pointer">
+            <span class="font-label-sm text-label-sm text-on-surface">Görünenleri Seç</span>
+          </label>
+          <span id="selected-badge" class="bg-surface-container-highest px-3 py-0.5 rounded-full text-[11px] font-label-sm text-on-surface-variant border border-white/5">0 seçili</span>
+        </div>
 
-    <!-- Empty State matching screen.png -->
-    <div id="empty-state" class="empty-state">
-      <div class="empty-state-icon">
-        <i class="fa-solid fa-cloud-arrow-down"></i>
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-white/5 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider text-[11px]">
+                <th class="py-3 px-4 w-10"></th>
+                <th class="py-3 px-2 w-12 text-center">#</th>
+                <th class="py-3 px-4">Şarkı & Sanatçı</th>
+                <th class="py-3 px-4 hidden md:table-cell">Albüm</th>
+                <th class="py-3 px-4 w-20 text-center"><span class="material-symbols-outlined text-xs">schedule</span></th>
+                <th class="py-3 px-4 w-48">Durum</th>
+                <th class="py-3 px-4 w-32 text-right">İşlem</th>
+              </tr>
+            </thead>
+            <tbody id="tracks-tbody" class="divide-y divide-white/5 font-body-sm text-body-sm">
+              <!-- Dynamic Track Rows -->
+            </tbody>
+          </table>
+        </div>
       </div>
-      <h3 class="empty-title">Henüz bir liste getirilmedi</h3>
-      <p class="empty-subtitle">Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve <strong>"Listeyi Getir"</strong> butonuna basın.</p>
+
     </div>
   </main>
 
-  <!-- Audio Player Floating Bar (When previewing) -->
-  <div id="floating-player" class="floating-player hidden">
-    <div class="player-content container">
-      <div class="player-track-info">
-        <img id="player-thumb" src="/static/img/placeholder.svg" alt="Thumb" class="player-thumb" />
-        <div class="player-text">
-          <div class="player-title" id="player-title">Şarkı Adı</div>
-          <div class="player-artist" id="player-artist">Sanatçı</div>
+  <!-- Floating Audio Player Bar -->
+  <div id="floating-player" class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-4xl glass-panel rounded-2xl p-3 z-50 shadow-2xl border border-primary/20 hidden transition-all">
+    <div class="flex items-center justify-between gap-md">
+      <div class="flex items-center gap-sm max-w-xs">
+        <img id="player-thumb" src="/static/img/placeholder.svg" alt="Thumb" class="w-11 h-11 rounded-lg object-cover flex-shrink-0" />
+        <div class="truncate">
+          <div id="player-title" class="font-headline-sm text-sm text-on-surface font-bold truncate">Şarkı Adı</div>
+          <div id="player-artist" class="font-body-sm text-xs text-on-surface-variant truncate">Sanatçı</div>
         </div>
       </div>
-      <div class="player-controls">
-        <audio id="native-audio" controls autoplay></audio>
+      <div class="flex-1 flex justify-center">
+        <audio id="native-audio" controls autoplay class="w-full max-w-md h-8"></audio>
       </div>
-      <button class="btn-icon-dark" id="player-close" title="Kapat">
-        <i class="fa-solid fa-xmark"></i>
+      <button id="player-close" class="p-2 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-on-surface transition-colors" title="Kapat">
+        <span class="material-symbols-outlined text-sm">close</span>
       </button>
     </div>
   </div>
 
   <!-- Settings Modal -->
-  <div class="modal-overlay hidden" id="settings-modal">
-    <div class="modal-card card">
-      <div class="modal-header">
-        <h3 class="modal-title"><i class="fa-solid fa-sliders"></i> Uygulama Ayarları</h3>
-        <button class="btn-icon-dark modal-close" id="btn-close-settings">
-          <i class="fa-solid fa-xmark"></i>
+  <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+    <div class="glass-panel w-full max-w-lg rounded-2xl p-lg flex flex-col gap-md border border-white/10 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-white/10 pb-3">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">tune</span> Uygulama Ayarları
+        </h3>
+        <button id="btn-close-settings" class="p-1 text-on-surface-variant hover:text-on-surface">
+          <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="modal-body">
+      <div class="flex flex-col gap-sm">
         <!-- Output Directory -->
-        <div class="form-group">
-          <label class="form-label">
-            <i class="fa-solid fa-folder"></i> İndirme Klasörü (Hedef Dizin):
+        <div class="flex flex-col gap-1">
+          <label class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs">folder</span> İndirme Klasörü (Hedef Dizin):
           </label>
-          <div class="input-with-action">
-            <input type="text" id="setting-output-dir" class="form-input" placeholder="~/Music" />
-            <button type="button" class="btn btn-secondary" id="btn-open-dir-settings">
-              <i class="fa-solid fa-folder-open"></i> Aç
+          <div class="flex gap-2">
+            <input id="setting-output-dir" type="text" class="flex-1 bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary" placeholder="~/Music" />
+            <button id="btn-open-dir-settings" type="button" class="bg-surface-container-highest hover:bg-surface-bright text-on-surface px-3 py-2 rounded-lg text-xs font-bold font-label-md flex items-center gap-1">
+              <span class="material-symbols-outlined text-xs">folder_open</span> Aç
             </button>
           </div>
-          <small class="form-hint">Varsayılan olarak kullanıcının ev dizinindeki <code>~/Music</code> klasörüne kaydedilir.</small>
+          <small class="text-on-surface-variant text-[11px]">Varsayılan olarak kullanıcının ev dizinindeki <code>~/Music</code> klasörüne kaydedilir.</small>
         </div>
 
         <!-- Audio Bitrate -->
-        <div class="form-group">
-          <label class="form-label">
-            <i class="fa-solid fa-wave-square"></i> MP3 Ses Kalitesi (Bitrate):
+        <div class="flex flex-col gap-1 mt-2">
+          <label class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs">graphic_eq</span> MP3 Ses Kalitesi:
           </label>
-          <select id="setting-bitrate" class="form-select">
+          <select id="setting-bitrate" class="bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary">
             <option value="320" selected>320 kbps (En Yüksek / Stüdyo Kalitesi - Önerilen)</option>
             <option value="256">256 kbps (Yüksek Kalite)</option>
             <option value="192">192 kbps (Standart Kalite)</option>
@@ -279,30 +421,28 @@
           </select>
         </div>
 
-        <!-- Optional Spotify API Keys -->
-        <div class="form-group">
-          <label class="form-label">
-            <i class="fa-brands fa-spotify"></i> Özel Spotify API Anahtarları (İsteğe Bağlı):
+        <!-- Spotify API (Optional) -->
+        <div class="flex flex-col gap-1 mt-2">
+          <label class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs">key</span> Spotify API Anahtarları (İsteğe Bağlı):
           </label>
-          <input type="text" id="setting-client-id" class="form-input" placeholder="Spotify Client ID (Boş bırakılabilir)" />
-          <input type="password" id="setting-client-secret" class="form-input mt-2" placeholder="Spotify Client Secret (Boş bırakılabilir)" />
-          <small class="form-hint">Standart indirmelerde API anahtarına gerek yoktur, uygulama otomatik ayrıştırma yapar.</small>
+          <input id="setting-client-id" type="text" placeholder="Spotify Client ID" class="bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary text-xs" />
+          <input id="setting-client-secret" type="password" placeholder="Spotify Client Secret" class="bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary text-xs mt-1" />
+          <small class="text-on-surface-variant text-[11px]">Standart indirmelerde API anahtarına gerek yoktur.</small>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="btn-cancel-settings">İptal</button>
-        <button class="btn btn-lavender-action" id="btn-save-settings">
-          <i class="fa-solid fa-check"></i> Kaydet
-        </button>
+      <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
+        <button id="btn-cancel-settings" class="bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md text-xs font-semibold">İptal</button>
+        <button id="btn-save-settings" class="bg-primary text-on-primary-fixed px-4 py-2 rounded-lg font-label-md text-xs font-bold shadow-lg">Kaydet</button>
       </div>
     </div>
   </div>
 
   <!-- Toast Notification Container -->
-  <div id="toast-container" class="toast-container"></div>
+  <div id="toast-container" class="fixed top-20 right-6 flex flex-col gap-2 z-50"></div>
 
-  <!-- App JavaScript -->
+  <!-- Frontend JS Controller -->
   <script src="/static/js/app.js"></script>
 </body>
 </html>
