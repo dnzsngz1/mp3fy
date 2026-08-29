@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>MP3fy - Spotify MP3 İndirici</title>
+  <title>MP3fy - Spotify MP3 Downloader</title>
   <link rel="icon" type="image/jpeg" href="/static/img/logo.jpg">
   
   <!-- Tailwind CSS with plugins -->
@@ -200,6 +200,12 @@
         <span id="theme-icon" class="material-symbols-outlined text-sm material-symbols-fill">dark_mode</span>
         <span id="theme-label-text" class="font-label-sm text-label-sm">Karanlık</span>
       </button>
+
+      <!-- Dil Değiştirme Düğmesi (TR / EN) -->
+      <button id="lang-toggle" class="p-xs bg-surface-container hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors flex items-center gap-xs px-2.5 font-label-sm text-label-sm font-bold border border-white/5" title="Dili Değiştir / Change Language">
+        <span class="material-symbols-outlined text-sm">translate</span>
+        <span id="lang-label-text">TR</span>
+      </button>
     </div>
   </nav>
 
@@ -209,7 +215,7 @@
     <!-- Hero Search Card -->
     <div class="glass-panel w-full max-w-4xl rounded-2xl p-xl flex flex-col items-center gap-lg">
       <div class="text-center space-y-xs">
-        <h1 class="font-headline-lg text-headline-lg text-on-surface">Listenizin gerçek sahibi olun!</h1>
+        <h1 id="hero-title" class="font-headline-lg text-headline-lg text-on-surface">Listenizin gerçek sahibi olun!</h1>
       </div>
 
       <!-- URL Input Bar -->
@@ -226,7 +232,7 @@
           </div>
           <button type="button" id="btn-paste" class="bg-surface-container hover:bg-surface-container-high text-on-surface px-sm py-xs rounded-lg flex items-center gap-xs transition-colors font-label-md text-label-md">
             <span class="material-symbols-outlined text-sm">content_paste</span>
-            Yapıştır
+            <span id="btn-paste-text">Yapıştır</span>
           </button>
           <button type="submit" id="btn-fetch" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-lg py-sm rounded-lg flex items-center gap-xs transition-all font-label-md text-label-md font-bold shadow-[0_0_20px_rgba(221,183,255,0.4)]">
             <span id="btn-fetch-icon" class="material-symbols-outlined">download</span>
@@ -238,7 +244,7 @@
 
       <!-- Quick Sample Buttons -->
       <div class="flex items-center gap-sm mt-xs flex-wrap justify-center">
-        <span class="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
+        <span id="sample-links-label" class="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
           <span class="material-symbols-outlined text-xs">lightbulb</span> Örnek Linkler:
         </span>
         <button class="sample-chip bg-surface-container hover:bg-surface-container-high px-3 py-1 rounded-full text-on-surface font-label-sm text-label-sm transition-colors border border-white/5" data-url="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M">🔥 Today's Top Hits</button>
@@ -253,8 +259,8 @@
       <div class="w-16 h-16 bg-surface-container-highest rounded-full flex items-center justify-center mb-sm shadow-lg border border-white/5">
         <span class="material-symbols-outlined text-3xl text-primary material-symbols-fill">cloud_download</span>
       </div>
-      <h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Henüz bir liste getirilmedi</h3>
-      <p class="font-body-sm text-body-sm text-on-surface-variant text-center max-w-md">Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve "Listeyi Getir" butonuna basın.</p>
+      <h3 id="empty-title" class="font-headline-sm text-headline-sm text-on-surface mb-2">Henüz bir liste getirilmedi</h3>
+      <p id="empty-desc" class="font-body-sm text-body-sm text-on-surface-variant text-center max-w-md">Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve "Listeyi Getir" butonuna basın.</p>
     </div>
 
     <!-- Playlist & Tracks Section (Hidden initially) -->
@@ -275,7 +281,7 @@
           <div class="flex items-center justify-center md:justify-start gap-sm text-on-surface-variant font-label-sm text-label-sm flex-wrap mt-1">
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">person</span> <span id="pl-owner">Spotify</span></span>
             <span>•</span>
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">music_note</span> <span id="pl-track-count">0</span> Şarkı</span>
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">music_note</span> <span id="pl-track-count">0</span> <span id="label-tracks-count">Şarkı</span></span>
             <span>•</span>
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">schedule</span> <span id="pl-total-duration">--:--</span></span>
             <span>•</span>
@@ -289,7 +295,7 @@
           <div class="flex items-center justify-center md:justify-start gap-sm mt-3 flex-wrap">
             <button id="btn-download-all" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-md py-xs rounded-xl flex items-center gap-xs transition-all font-label-md text-label-md font-bold shadow-[0_0_20px_rgba(221,183,255,0.4)]">
               <span class="material-symbols-outlined text-base">download_for_offline</span>
-              Tümünü İndir (<span id="selected-count-label">0</span>)
+              <span id="btn-download-all-text">Tümünü İndir</span> (<span id="selected-count-label">0</span>)
             </button>
             <button id="btn-download-active-batch" class="bg-surface-container-highest hover:bg-surface-bright text-on-surface px-md py-xs rounded-xl flex items-center gap-xs transition-all font-label-md text-label-md font-semibold border border-white/10">
               <span class="material-symbols-outlined text-base">batch_prediction</span>
@@ -297,7 +303,7 @@
             </button>
             <button id="btn-cancel-all" class="bg-error-container hover:bg-error text-white px-md py-xs rounded-xl flex items-center gap-xs transition-all font-label-md text-label-md font-semibold hidden">
               <span class="material-symbols-outlined text-base">stop_circle</span>
-              Durdur
+              <span id="btn-cancel-all-text">Durdur</span>
             </button>
           </div>
         </div>
@@ -306,7 +312,7 @@
       <!-- 100-Track Batch Selector Tabs (Yüzlük Bölümler) -->
       <div id="batch-tabs-container" class="glass-panel w-full rounded-xl p-sm flex items-center justify-between gap-sm flex-wrap">
         <div class="flex items-center gap-xs flex-wrap">
-          <span class="text-on-surface-variant font-label-sm text-label-sm font-bold uppercase tracking-wider flex items-center gap-1 mr-2">
+          <span id="label-batches" class="text-on-surface-variant font-label-sm text-label-sm font-bold uppercase tracking-wider flex items-center gap-1 mr-2">
             <span class="material-symbols-outlined text-sm text-primary">layers</span> Bölümler:
           </span>
           <div id="batch-tabs-list" class="flex items-center gap-xs flex-wrap">
@@ -325,7 +331,7 @@
       <div class="glass-panel w-full rounded-xl p-sm px-md flex flex-col gap-2">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-sm">
-            <span class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+            <span id="label-progress" class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
               <span class="material-symbols-outlined text-sm text-primary">pending_actions</span> İlerleme Durumu
             </span>
             <span id="overall-stats-text" class="text-on-surface-variant font-label-sm text-label-sm">0 / 0 Tamamlandı</span>
@@ -342,7 +348,7 @@
         <div class="px-md py-sm bg-surface-container/50 flex justify-between items-center border-b border-white/5">
           <label class="flex items-center gap-2 cursor-pointer select-none">
             <input type="checkbox" id="select-all-checkbox" checked class="rounded border-white/20 bg-surface-container text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-            <span class="font-label-sm text-label-sm text-on-surface">Görünenleri Seç</span>
+            <span id="label-select-visible" class="font-label-sm text-label-sm text-on-surface">Görünenleri Seç</span>
           </label>
           <span id="selected-badge" class="bg-surface-container-highest px-3 py-0.5 rounded-full text-[11px] font-label-sm text-on-surface-variant border border-white/5">0 seçili</span>
         </div>
@@ -353,11 +359,11 @@
               <tr class="border-b border-white/5 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider text-[11px]">
                 <th class="py-3 px-4 w-10"></th>
                 <th class="py-3 px-2 w-12 text-center">#</th>
-                <th class="py-3 px-4">Şarkı & Sanatçı</th>
-                <th class="py-3 px-4 hidden md:table-cell">Albüm</th>
+                <th id="th-track" class="py-3 px-4">Şarkı & Sanatçı</th>
+                <th id="th-album" class="py-3 px-4 hidden md:table-cell">Albüm</th>
                 <th class="py-3 px-4 w-20 text-center"><span class="material-symbols-outlined text-xs">schedule</span></th>
-                <th class="py-3 px-4 w-48">Durum</th>
-                <th class="py-3 px-4 w-32 text-right">İşlem</th>
+                <th id="th-status" class="py-3 px-4 w-48">Durum</th>
+                <th id="th-action" class="py-3 px-4 w-32 text-right">İşlem</th>
               </tr>
             </thead>
             <tbody id="tracks-tbody" class="divide-y divide-white/5 font-body-sm text-body-sm">
@@ -393,7 +399,7 @@
   <div id="folder-picker-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
     <div class="glass-panel w-full max-w-lg rounded-2xl p-lg flex flex-col gap-md border border-white/10 shadow-2xl">
       <div class="flex justify-between items-center border-b border-white/10 pb-3">
-        <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+        <h3 id="folder-modal-title" class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
           <span class="material-symbols-outlined text-primary">folder_managed</span> İndirme Klasörünü Seçin
         </h3>
         <button id="btn-close-folder-modal" class="p-1 text-on-surface-variant hover:text-on-surface">
@@ -406,24 +412,24 @@
         <div class="flex items-center gap-2 min-w-0">
           <span class="material-symbols-outlined text-primary flex-shrink-0">check_circle</span>
           <div class="truncate">
-            <span class="text-[11px] font-label-sm text-on-surface-variant block">Mevcut İndirme Konumu:</span>
+            <span id="current-folder-label" class="text-[11px] font-label-sm text-on-surface-variant block">Mevcut İndirme Konumu:</span>
             <span id="current-folder-display" class="font-bold text-sm text-on-surface truncate block">~/Music</span>
           </div>
         </div>
         <button id="btn-open-current-in-explorer" type="button" class="bg-surface-container hover:bg-surface-bright text-on-surface px-3 py-1.5 rounded-lg text-xs font-bold font-label-md flex items-center gap-1 flex-shrink-0 transition-colors" title="Bu klasörü aç">
-          <span class="material-symbols-outlined text-xs">folder_open</span> Aç
+          <span class="material-symbols-outlined text-xs">folder_open</span> <span id="btn-open-folder-modal-text">Aç</span>
         </button>
       </div>
 
       <!-- Native OS Browse Button -->
       <button id="btn-browse-native-folder" type="button" class="w-full bg-primary hover:bg-primary-container text-on-primary-fixed py-3 rounded-xl flex items-center justify-center gap-2 font-label-md text-sm font-bold shadow-lg transition-all">
         <span class="material-symbols-outlined">drive_folder_upload</span>
-        Bilgisayardan Klasör Seç (Gözat...)
+        <span id="btn-browse-native-text">Bilgisayardan Klasör Seç (Gözat...)</span>
       </button>
 
       <!-- Quick Location Presets -->
       <div class="flex flex-col gap-1.5">
-        <span class="text-on-surface-variant font-label-sm text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+        <span id="label-quick-locations" class="text-on-surface-variant font-label-sm text-xs font-bold uppercase tracking-wider flex items-center gap-1">
           <span class="material-symbols-outlined text-xs text-primary">near_me</span> Hızlı Konumlar:
         </span>
         <div id="folder-presets-container" class="grid grid-cols-2 gap-2">
@@ -433,19 +439,21 @@
 
       <!-- Custom Path Input -->
       <div class="flex flex-col gap-1 mt-1">
-        <label class="font-label-sm text-xs font-bold text-on-surface flex items-center gap-1">
+        <label id="label-custom-path" class="font-label-sm text-xs font-bold text-on-surface flex items-center gap-1">
           <span class="material-symbols-outlined text-xs">edit_note</span> veya Özel Dizin Yolu Yazın:
         </label>
         <div class="flex gap-2">
           <input id="custom-folder-path-input" type="text" class="flex-1 bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 text-xs font-body-sm outline-none focus:border-primary" placeholder="/home/kullanici/Muziklerim" />
           <button id="btn-apply-custom-path" type="button" class="bg-surface-container-highest hover:bg-surface-bright text-on-surface px-4 py-2 rounded-lg text-xs font-bold font-label-md transition-colors">
-            Uygula
+            <span id="btn-apply-path-text">Uygula</span>
           </button>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
-        <button id="btn-done-folder-modal" class="bg-primary text-on-primary-fixed px-5 py-2 rounded-lg font-label-md text-xs font-bold shadow-lg">Tamam</button>
+        <button id="btn-done-folder-modal" class="bg-primary text-on-primary-fixed px-5 py-2 rounded-lg font-label-md text-xs font-bold shadow-lg">
+          <span id="btn-done-folder-text">Tamam</span>
+        </button>
       </div>
     </div>
   </div>
@@ -454,7 +462,7 @@
   <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
     <div class="glass-panel w-full max-w-lg rounded-2xl p-lg flex flex-col gap-md border border-white/10 shadow-2xl">
       <div class="flex justify-between items-center border-b border-white/10 pb-3">
-        <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+        <h3 id="settings-modal-title" class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
           <span class="material-symbols-outlined text-primary">tune</span> Uygulama Ayarları
         </h3>
         <button id="btn-close-settings" class="p-1 text-on-surface-variant hover:text-on-surface">
@@ -465,21 +473,21 @@
       <div class="flex flex-col gap-sm">
         <!-- Output Directory -->
         <div class="flex flex-col gap-1">
-          <label class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+          <label id="label-setting-dir" class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
             <span class="material-symbols-outlined text-xs">folder</span> İndirme Klasörü (Hedef Dizin):
           </label>
           <div class="flex gap-2">
             <input id="setting-output-dir" type="text" class="flex-1 bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary" placeholder="~/Music" />
             <button id="btn-open-dir-settings" type="button" class="bg-surface-container-highest hover:bg-surface-bright text-on-surface px-3 py-2 rounded-lg text-xs font-bold font-label-md flex items-center gap-1">
-              <span class="material-symbols-outlined text-xs">folder_open</span> Aç
+              <span class="material-symbols-outlined text-xs">folder_open</span> <span id="btn-open-dir-settings-text">Aç</span>
             </button>
           </div>
-          <small class="text-on-surface-variant text-[11px]">Varsayılan olarak kullanıcının ev dizinindeki <code>~/Music</code> klasörüne kaydedilir.</small>
+          <small id="label-setting-dir-desc" class="text-on-surface-variant text-[11px]">Varsayılan olarak kullanıcının ev dizinindeki <code>~/Music</code> klasörüne kaydedilir.</small>
         </div>
 
         <!-- Audio Bitrate -->
         <div class="flex flex-col gap-1 mt-2">
-          <label class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+          <label id="label-setting-quality" class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
             <span class="material-symbols-outlined text-xs">graphic_eq</span> MP3 Ses Kalitesi:
           </label>
           <select id="setting-bitrate" class="bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary">
@@ -492,18 +500,22 @@
 
         <!-- Spotify API (Optional) -->
         <div class="flex flex-col gap-1 mt-2">
-          <label class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+          <label id="label-setting-api" class="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
             <span class="material-symbols-outlined text-xs">key</span> Spotify API Anahtarları (İsteğe Bağlı):
           </label>
           <input id="setting-client-id" type="text" placeholder="Spotify Client ID" class="bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary text-xs" />
           <input id="setting-client-secret" type="password" placeholder="Spotify Client Secret" class="bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 font-body-sm outline-none focus:border-primary text-xs mt-1" />
-          <small class="text-on-surface-variant text-[11px]">Standart indirmelerde API anahtarına gerek yoktur.</small>
+          <small id="label-setting-api-desc" class="text-on-surface-variant text-[11px]">Standart indirmelerde API anahtarına gerek yoktur.</small>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
-        <button id="btn-cancel-settings" class="bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md text-xs font-semibold">İptal</button>
-        <button id="btn-save-settings" class="bg-primary text-on-primary-fixed px-4 py-2 rounded-lg font-label-md text-xs font-bold shadow-lg">Kaydet</button>
+        <button id="btn-cancel-settings" class="bg-surface-container text-on-surface px-4 py-2 rounded-lg font-label-md text-xs font-semibold">
+          <span id="btn-cancel-settings-text">İptal</span>
+        </button>
+        <button id="btn-save-settings" class="bg-primary text-on-primary-fixed px-4 py-2 rounded-lg font-label-md text-xs font-bold shadow-lg">
+          <span id="btn-save-settings-text">Kaydet</span>
+        </button>
       </div>
     </div>
   </div>
