@@ -1,6 +1,6 @@
 /**
  * MP3fy - Modern Spotify MP3 Downloader
- * Frontend JavaScript Controller with 100-Track Batching & Tailwind Glassmorphic UI
+ * Frontend JavaScript Controller with 100-Track Batching, Folder Selection & Tailwind Glassmorphic UI
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -41,6 +41,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const plTrackCount = document.getElementById("pl-track-count");
   const plTotalDuration = document.getElementById("pl-total-duration");
   const plDestFolder = document.getElementById("pl-dest-folder");
+  const btnChangeFolderBadge = document.getElementById("btn-change-folder-badge");
+
+  // Folder Selection Elements
+  const btnSelectFolder = document.getElementById("btn-select-folder");
+  const navFolderLabel = document.getElementById("nav-folder-label");
+  const btnHeaderOpenFolder = document.getElementById("btn-open-folder");
+  const folderPickerModal = document.getElementById("folder-picker-modal");
+  const btnCloseFolderModal = document.getElementById("btn-close-folder-modal");
+  const btnDoneFolderModal = document.getElementById("btn-done-folder-modal");
+  const currentFolderDisplay = document.getElementById("current-folder-display");
+  const btnOpenCurrentInExplorer = document.getElementById("btn-open-current-in-explorer");
+  const btnBrowseNativeFolder = document.getElementById("btn-browse-native-folder");
+  const folderPresetsContainer = document.getElementById("folder-presets-container");
+  const customFolderPathInput = document.getElementById("custom-folder-path-input");
+  const btnApplyCustomPath = document.getElementById("btn-apply-custom-path");
 
   // Batch Tabs Elements
   const batchTabsContainer = document.getElementById("batch-tabs-container");
@@ -50,7 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const btnDownloadAll = document.getElementById("btn-download-all");
   const btnCancelAll = document.getElementById("btn-cancel-all");
-  const btnHeaderOpenFolder = document.getElementById("btn-open-folder");
   const selectedCountLabel = document.getElementById("selected-count-label");
 
   const overallProgressBar = document.getElementById("overall-progress-bar");
@@ -160,22 +174,166 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ==========================================
-     3. SETTINGS & FOLDER ACTIONS
+     3. SETTINGS & FOLDER SELECTION
      ========================================== */
+  function updateFolderUI(folderPath) {
+    if (!folderPath) return;
+    appSettings.output_dir = folderPath;
+    
+    // Shorten folder display for header
+    let shortName = folderPath;
+    const parts = folderPath.replace(/\\/g, "/").split("/").filter(Boolean);
+    if (parts.length > 0) {
+      shortName = parts[parts.length - 1];
+    }
+
+    if (navFolderLabel) navFolderLabel.textContent = `Klasör: ${shortName}`;
+    if (currentFolderDisplay) currentFolderDisplay.textContent = folderPath;
+    if (plDestFolder) plDestFolder.textContent = folderPath;
+    if (settingOutputDir) settingOutputDir.value = folderPath;
+    if (customFolderPathInput) customFolderPathInput.value = folderPath;
+  }
+
   async function loadSettings() {
     try {
       const res = await fetch("/api/settings");
       const data = await res.json();
       appSettings = data;
-      settingOutputDir.value = data.output_dir;
+      updateFolderUI(data.output_dir);
       settingBitrate.value = data.bitrate;
       if (data.spotify_client_id) settingClientId.value = data.spotify_client_id;
-      plDestFolder.textContent = data.output_dir;
     } catch (e) {
       console.error("Error loading settings:", e);
     }
   }
 
+  async function loadFolderPresets() {
+    try {
+      const res = await fetch("/api/folder-presets");
+      const data = await res.json();
+      const presets = data.presets || [];
+      folderPresetsContainer.innerHTML = "";
+
+      presets.forEach((preset) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          "bg-surface-container hover:bg-surface-container-high text-on-surface p-2.5 rounded-xl border border-white/5 flex items-center gap-2 text-xs font-label-md transition-all text-left truncate";
+        btn.innerHTML = `
+          <span class="material-symbols-outlined text-primary text-sm">${preset.icon || "folder"}</span>
+          <span class="truncate font-semibold">${preset.name}</span>
+        `;
+        btn.addEventListener("click", async () => {
+          await changeDownloadFolder(preset.path);
+          showToast(`İndirme konumu ayarlandı: ${preset.name}`, "success");
+        });
+        folderPresetsContainer.appendChild(btn);
+      });
+    } catch (e) {
+      console.error("Error loading folder presets:", e);
+    }
+  }
+
+  async function changeDownloadFolder(newPath) {
+    if (!newPath) return false;
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ output_dir: newPath.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        updateFolderUI(data.settings.output_dir);
+        return true;
+      }
+    } catch (e) {
+      console.error("Error setting download folder:", e);
+    }
+    return false;
+  }
+
+  // Open Folder Picker Modal
+  function openFolderPickerModal() {
+    loadFolderPresets();
+    folderPickerModal.classList.remove("hidden");
+  }
+
+  function closeFolderPickerModal() {
+    folderPickerModal.classList.add("hidden");
+  }
+
+  btnSelectFolder.addEventListener("click", openFolderPickerModal);
+  if (btnChangeFolderBadge) btnChangeFolderBadge.addEventListener("click", openFolderPickerModal);
+  btnCloseFolderModal.addEventListener("click", closeFolderPickerModal);
+  btnDoneFolderModal.addEventListener("click", closeFolderPickerModal);
+
+  // Native OS Browse Button
+  btnBrowseNativeFolder.addEventListener("click", async () => {
+    btnBrowseNativeFolder.disabled = true;
+    btnBrowseNativeFolder.innerHTML = `<span class="spinner inline-block"></span> Klasör Seçiliyor...`;
+
+    try {
+      const res = await fetch("/api/browse-folder", { method: "POST" });
+      const data = await res.json();
+      if (data.status === "success" && data.path) {
+        updateFolderUI(data.path);
+        showToast(`İndirme klasörü seçildi: ${data.path}`, "success");
+        closeFolderPickerModal();
+      }
+    } catch (e) {
+      showToast("Klasör seçici açılamadı.", "error");
+    } finally {
+      btnBrowseNativeFolder.disabled = false;
+      btnBrowseNativeFolder.innerHTML = `<span class="material-symbols-outlined">drive_folder_upload</span> Bilgisayardan Klasör Seç (Gözat...)`;
+    }
+  });
+
+  // Apply Custom Path
+  btnApplyCustomPath.addEventListener("click", async () => {
+    const val = customFolderPathInput.value.trim();
+    if (!val) {
+      showToast("Lütfen geçerli bir klasör yolu girin.", "error");
+      return;
+    }
+    const success = await changeDownloadFolder(val);
+    if (success) {
+      showToast(`Klasör güncellendi: ${val}`, "success");
+    } else {
+      showToast("Klasör yolu uygulanamadı.", "error");
+    }
+  });
+
+  // Open Current in Explorer
+  btnOpenCurrentInExplorer.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/open-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: appSettings.output_dir }),
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        showToast(`Klasör açıldı: ${data.path}`, "success");
+      }
+    } catch (e) {
+      showToast("Klasör açılamadı.", "error");
+    }
+  });
+
+  btnHeaderOpenFolder.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/open-folder", { method: "POST" });
+      const data = await res.json();
+      if (data.status === "success") {
+        showToast(`Klasör açıldı: ${data.path}`, "success");
+      }
+    } catch (e) {
+      showToast("Klasör açılamadı.", "error");
+    }
+  });
+
+  // Settings Modal Handlers
   btnSettingsOpen.addEventListener("click", () => {
     loadSettings();
     settingsModal.classList.remove("hidden");
@@ -214,22 +372,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  async function openMusicFolder() {
+  btnOpenDirSettings.addEventListener("click", async () => {
     try {
       const res = await fetch("/api/open-folder", { method: "POST" });
       const data = await res.json();
       if (data.status === "success") {
-        showToast(`Music klasörü açıldı: ${data.path}`, "success");
-      } else {
-        showToast("Klasör açılamadı.", "error");
+        showToast(`Klasör açıldı: ${data.path}`, "success");
       }
     } catch (e) {
-      showToast("Klasör açılırken hata oluştu.", "error");
+      showToast("Klasör açılamadı.", "error");
     }
-  }
-
-  btnHeaderOpenFolder.addEventListener("click", openMusicFolder);
-  btnOpenDirSettings.addEventListener("click", openMusicFolder);
+  });
 
   /* ==========================================
      4. URL INPUT & FETCHING
@@ -277,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       currentPlaylist = resData.data;
-      activeBatchIndex = 0; // Default to all tracks or first batch
+      activeBatchIndex = 0;
       renderPlaylist(currentPlaylist);
       showToast(`${currentPlaylist.tracks.length} şarkı başarıyla getirildi!`, "success");
     } catch (err) {
@@ -316,6 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
     plDesc.textContent = playlist.description || "Spotify üzerinden getirildi.";
     plOwner.textContent = playlist.owner;
     plTrackCount.textContent = playlist.total_tracks;
+    plDestFolder.textContent = appSettings.output_dir;
 
     // Calculate total duration
     let totalMs = 0;
@@ -632,7 +786,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/download/single", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ song }),
+        body: JSON.stringify({ song, output_dir: appSettings.output_dir }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -656,14 +810,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    showToast(`Bölümdeki ${toDownload.length} şarkı indirme kuyruğuna alındı.`, "success");
+    showToast(`Bölümdeki ${toDownload.length} şarkı "${appSettings.output_dir}" konumuna indiriliyor...`, "success");
     btnCancelAll.classList.remove("hidden");
 
     try {
       const res = await fetch("/api/download/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ songs: toDownload }),
+        body: JSON.stringify({ songs: toDownload, output_dir: appSettings.output_dir }),
       });
       const data = await res.json();
       if (res.ok && data.tasks) {
@@ -681,7 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!currentPlaylist || selectedSongIds.size === 0) return;
 
     const songsToDownload = currentPlaylist.tracks.filter((t) => selectedSongIds.has(t.id));
-    showToast(`${songsToDownload.length} şarkı indirme kuyruğuna eklendi.`, "success");
+    showToast(`${songsToDownload.length} şarkı "${appSettings.output_dir}" konumuna indiriliyor...`, "success");
 
     btnCancelAll.classList.remove("hidden");
 
@@ -689,7 +843,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/download/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ songs: songsToDownload }),
+        body: JSON.stringify({ songs: songsToDownload, output_dir: appSettings.output_dir }),
       });
       const data = await res.json();
       if (res.ok && data.tasks) {

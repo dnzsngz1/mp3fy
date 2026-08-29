@@ -178,11 +178,16 @@
       <img src="/static/img/logo.jpg" alt="Logo" class="w-9 h-9 rounded-lg object-cover shadow-md border border-white/10" />
       <span class="font-headline-md text-headline-md font-black tracking-tighter text-on-surface">MP3<span class="text-primary">fy</span></span>
     </div>
-    <div class="flex items-center gap-sm">
-      <!-- Music Folder Button -->
-      <button id="btn-open-folder" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-md py-xs rounded-lg flex items-center gap-xs transition-all duration-200 font-label-md text-label-md font-bold shadow-[0_0_15px_rgba(221,183,255,0.3)]">
-        <span class="material-symbols-outlined text-sm">folder</span>
-        Music Klasörü
+    <div class="flex items-center gap-sm flex-wrap">
+      <!-- Change / Select Download Folder Button -->
+      <button id="btn-select-folder" class="bg-primary hover:bg-primary-container text-on-primary-fixed px-md py-xs rounded-lg flex items-center gap-xs transition-all duration-200 font-label-md text-label-md font-bold shadow-[0_0_15px_rgba(221,183,255,0.3)]" title="İndirilecek klasörü seç veya değiştir">
+        <span class="material-symbols-outlined text-sm">folder_open</span>
+        <span id="nav-folder-label">Klasör: ~/Music</span>
+      </button>
+
+      <!-- Open Folder Button -->
+      <button id="btn-open-folder" class="p-xs bg-surface-container hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors flex items-center justify-center" title="Seçili indirme klasörünü aç">
+        <span class="material-symbols-outlined">folder</span>
       </button>
 
       <!-- Settings Button -->
@@ -274,7 +279,10 @@
             <span>•</span>
             <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">schedule</span> <span id="pl-total-duration">--:--</span></span>
             <span>•</span>
-            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">folder</span> <span id="pl-dest-folder">~/Music</span></span>
+            <button id="btn-change-folder-badge" class="flex items-center gap-1 text-primary hover:text-primary-container bg-surface-container hover:bg-surface-container-high px-2 py-0.5 rounded-full border border-white/5 transition-colors cursor-pointer" title="İndirme klasörünü değiştir">
+              <span class="material-symbols-outlined text-xs">folder_open</span> <span id="pl-dest-folder">~/Music</span>
+              <span class="material-symbols-outlined text-[10px]">edit</span>
+            </button>
           </div>
 
           <!-- Actions Row -->
@@ -378,6 +386,67 @@
       <button id="player-close" class="p-2 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-on-surface transition-colors" title="Kapat">
         <span class="material-symbols-outlined text-sm">close</span>
       </button>
+    </div>
+  </div>
+
+  <!-- Folder Picker Modal (Klasör Seçim Penceresi) -->
+  <div id="folder-picker-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+    <div class="glass-panel w-full max-w-lg rounded-2xl p-lg flex flex-col gap-md border border-white/10 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-white/10 pb-3">
+        <h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">folder_managed</span> İndirme Klasörünü Seçin
+        </h3>
+        <button id="btn-close-folder-modal" class="p-1 text-on-surface-variant hover:text-on-surface">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Current Selected Folder Display -->
+      <div class="bg-surface-container-highest p-3 rounded-xl flex items-center justify-between gap-2 border border-white/5">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="material-symbols-outlined text-primary flex-shrink-0">check_circle</span>
+          <div class="truncate">
+            <span class="text-[11px] font-label-sm text-on-surface-variant block">Mevcut İndirme Konumu:</span>
+            <span id="current-folder-display" class="font-bold text-sm text-on-surface truncate block">~/Music</span>
+          </div>
+        </div>
+        <button id="btn-open-current-in-explorer" type="button" class="bg-surface-container hover:bg-surface-bright text-on-surface px-3 py-1.5 rounded-lg text-xs font-bold font-label-md flex items-center gap-1 flex-shrink-0 transition-colors" title="Bu klasörü aç">
+          <span class="material-symbols-outlined text-xs">folder_open</span> Aç
+        </button>
+      </div>
+
+      <!-- Native OS Browse Button -->
+      <button id="btn-browse-native-folder" type="button" class="w-full bg-primary hover:bg-primary-container text-on-primary-fixed py-3 rounded-xl flex items-center justify-center gap-2 font-label-md text-sm font-bold shadow-lg transition-all">
+        <span class="material-symbols-outlined">drive_folder_upload</span>
+        Bilgisayardan Klasör Seç (Gözat...)
+      </button>
+
+      <!-- Quick Location Presets -->
+      <div class="flex flex-col gap-1.5">
+        <span class="text-on-surface-variant font-label-sm text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+          <span class="material-symbols-outlined text-xs text-primary">near_me</span> Hızlı Konumlar:
+        </span>
+        <div id="folder-presets-container" class="grid grid-cols-2 gap-2">
+          <!-- Populated dynamically via JS: Music, Downloads, Desktop, Documents -->
+        </div>
+      </div>
+
+      <!-- Custom Path Input -->
+      <div class="flex flex-col gap-1 mt-1">
+        <label class="font-label-sm text-xs font-bold text-on-surface flex items-center gap-1">
+          <span class="material-symbols-outlined text-xs">edit_note</span> veya Özel Dizin Yolu Yazın:
+        </label>
+        <div class="flex gap-2">
+          <input id="custom-folder-path-input" type="text" class="flex-1 bg-surface-container text-on-surface px-3 py-2 rounded-lg border border-white/10 text-xs font-body-sm outline-none focus:border-primary" placeholder="/home/kullanici/Muziklerim" />
+          <button id="btn-apply-custom-path" type="button" class="bg-surface-container-highest hover:bg-surface-bright text-on-surface px-4 py-2 rounded-lg text-xs font-bold font-label-md transition-colors">
+            Uygula
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
+        <button id="btn-done-folder-modal" class="bg-primary text-on-primary-fixed px-5 py-2 rounded-lg font-label-md text-xs font-bold shadow-lg">Tamam</button>
+      </div>
     </div>
   </div>
 

@@ -8,6 +8,7 @@ import sys
 import subprocess
 import platform
 from pathlib import Path
+from typing import Optional, List, Dict
 
 
 def sanitize_filename(filename: str, replacement: str = "_") -> str:
@@ -57,8 +58,10 @@ def format_duration(duration_ms: int | float | None) -> str:
 def ensure_directory(path: str | Path) -> Path:
     """
     Ensure the target directory exists and return Path object.
+    Supports expanding tilde (~) to user home directory.
     """
-    p = Path(path).resolve()
+    expanded = os.path.expanduser(str(path))
+    p = Path(expanded).resolve()
     p.mkdir(parents=True, exist_ok=True)
     return p
 
@@ -84,7 +87,8 @@ def open_folder_in_explorer(folder_path: str | Path) -> bool:
     Open the given folder in the system's default file manager.
     Supports Windows, macOS, and Linux.
     """
-    path_str = str(Path(folder_path).resolve())
+    expanded = os.path.expanduser(str(folder_path))
+    path_str = str(Path(expanded).resolve())
     try:
         current_os = platform.system()
         if current_os == "Windows":
@@ -100,3 +104,104 @@ def open_folder_in_explorer(folder_path: str | Path) -> bool:
     except Exception as e:
         print(f"Error opening folder {path_str}: {e}")
         return False
+
+
+def open_native_folder_picker(initial_dir: Optional[str | Path] = None) -> Optional[str]:
+    """
+    Opens native OS directory chooser dialog and returns the selected folder path, or None.
+    Supports Linux (zenity / kdialog / tkinter), macOS (osascript), Windows (PowerShell / Windows Forms).
+    """
+    sys_name = platform.system()
+    init_path = str(Path(initial_dir or Path.home()).resolve())
+
+    if sys_name == "Linux":
+        # 1. Try zenity
+        try:
+            cmd = ["zenity", "--file-selection", "--directory", "--title=İndirme Klasörünü Seçin", f"--filename={init_path}/"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+        # 2. Try kdialog
+        try:
+            cmd = ["kdialog", "--getexistingdirectory", init_path, "--title", "İndirme Klasörünü Seçin"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+
+    elif sys_name == "Darwin":  # macOS
+        try:
+            script = 'POSIX path of (choose folder with prompt "İndirme Klasörünü Seçin:")'
+            res = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=60)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+
+    elif sys_name == "Windows":
+        try:
+            ps_cmd = (
+                "[System.Reflection.Assembly]::LoadWithPartialName('System.windows.forms') | Out-Null;"
+                "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog;"
+                "$dialog.Description = 'MP3fy İndirme Klasörünü Seçin';"
+                f"$dialog.SelectedPath = '{init_path}';"
+                "if($dialog.ShowDialog() -eq 'OK'){ Write-Output $dialog.SelectedPath }"
+            )
+            res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=60)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+
+    # Fallback: Tkinter if available
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askdirectory(initialdir=init_path, title="İndirme Klasörünü Seçin")
+        root.destroy()
+        if selected:
+            return selected
+    except Exception:
+        pass
+
+    return None
+
+
+def get_common_folder_presets() -> List[Dict[str, str]]:
+    """Returns a list of common download folder presets for quick selection."""
+    home = Path.home()
+    presets = []
+
+    # Music
+    for m in ["Music", "Müzik"]:
+        if (home / m).exists():
+            presets.append({"name": "Müzik", "path": str(home / m), "icon": "music_note"})
+            break
+    else:
+        presets.append({"name": "Müzik", "path": str(home / "Music"), "icon": "music_note"})
+
+    # Downloads
+    for d in ["Downloads", "İndirilenler"]:
+        if (home / d).exists():
+            presets.append({"name": "İndirilenler", "path": str(home / d), "icon": "download"})
+            break
+
+    # Desktop
+    for d in ["Desktop", "Masaüstü"]:
+        if (home / d).exists():
+            presets.append({"name": "Masaüstü", "path": str(home / d), "icon": "desktop_windows"})
+            break
+
+    # Documents
+    for d in ["Documents", "Belgeler"]:
+        if (home / d).exists():
+            presets.append({"name": "Belgeler", "path": str(home / d), "icon": "folder"})
+            break
+
+    return presets

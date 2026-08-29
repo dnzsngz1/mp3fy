@@ -240,12 +240,37 @@ async def get_tasks():
     return JSONResponse(content={"tasks": tasks})
 
 
+class OpenFolderRequest(BaseModel):
+    path: Optional[str] = None
+
+
 @app.post("/api/open-folder")
-async def open_music_folder():
-    """Open the music folder in the OS file explorer."""
-    current_dir = downloader.output_dir
-    success = open_folder_in_explorer(current_dir)
-    return JSONResponse(content={"status": "success" if success else "failed", "path": str(current_dir)})
+async def open_music_folder(req: Optional[OpenFolderRequest] = None):
+    """Open the music folder or custom specified folder in the OS file explorer."""
+    target_dir = req.path if req and req.path else downloader.output_dir
+    success = open_folder_in_explorer(target_dir)
+    return JSONResponse(content={"status": "success" if success else "failed", "path": str(target_dir)})
+
+
+@app.post("/api/browse-folder")
+async def browse_folder():
+    """Trigger OS native folder chooser dialog and return the chosen path."""
+    from core.utils import open_native_folder_picker
+    selected = open_native_folder_picker(initial_dir=downloader.output_dir)
+    if selected:
+        new_dir = ensure_directory(selected)
+        downloader.set_output_dir(new_dir)
+        app_state["output_dir"] = str(new_dir)
+        return JSONResponse(content={"status": "success", "path": str(new_dir)})
+    return JSONResponse(content={"status": "cancelled", "path": str(downloader.output_dir)})
+
+
+@app.get("/api/folder-presets")
+async def get_folder_presets():
+    """Return common user directory presets (Music, Downloads, Desktop, Documents)."""
+    from core.utils import get_common_folder_presets
+    presets = get_common_folder_presets()
+    return JSONResponse(content={"presets": presets, "current": str(downloader.output_dir)})
 
 
 @app.get("/api/settings")
