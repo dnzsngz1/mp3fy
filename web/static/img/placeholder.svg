@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <rect width="300" height="300" fill="#1e293b"/>
+  <circle cx="150" cy="150" r="70" fill="#334155"/>
+  <path d="M150 100 C177 100 200 122 200 150 C200 177 177 200 150 200 C122 200 100 177 100 150 C100 122 122 100 150 100 Z" fill="#1db954" opacity="0.8"/>
+  <path d="M135 125 L175 150 L135 175 Z" fill="#ffffff"/>
+  <text x="150" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="bold" fill="#94a3b8" text-anchor="middle">MP3fy Music</text>
+</svg>

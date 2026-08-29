@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MP3fy - Spotify MP3 İndirici & Dönüştürücü</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- Background Glow FX -->
+  <div class="ambient-glow ambient-1"></div>
+  <div class="ambient-glow ambient-2"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="container header-content">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <i class="fa-brands fa-spotify"></i>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">MP3<span class="brand-accent">fy</span></span>
+          <span class="badge-version">v1.0</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Open Music Folder Button -->
+        <button class="btn btn-secondary" id="btn-open-folder" title="İndirilenlerin kaydedildiği 'music' klasörünü aç">
+          <i class="fa-solid fa-folder-open"></i>
+          <span class="btn-text">Music Klasörü</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button class="btn btn-icon" id="btn-settings-open" title="Ayarlar">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+
+        <!-- Siyah / Beyaz Tema Düğmesi (Theme Switcher) -->
+        <button class="theme-toggle-btn" id="theme-toggle" title="Siyah / Beyaz Tema Değiştir" aria-label="Tema Değiştir">
+          <div class="theme-icon-container">
+            <i class="fa-solid fa-moon moon-icon"></i>
+            <i class="fa-solid fa-sun sun-icon"></i>
+          </div>
+          <span class="theme-label" id="theme-label-text">Karanlık</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container container">
+    <!-- Hero / Input Section -->
+    <section class="hero-section card">
+      <div class="hero-text">
+        <h1 class="hero-title">Spotify Parça & Çalma Listesi İndirici</h1>
+        <p class="hero-subtitle">
+          Bağlantıyı yapıştırın, yüksek kaliteli MP3 (320kbps) olarak indirin. Albüm kapağı, sanatçı ve tüm ID3 etiketleri otomatik eklenir.
+        </p>
+      </div>
+
+      <!-- URL Input Box -->
+      <form id="fetch-form" class="url-input-form">
+        <div class="input-wrapper">
+          <i class="fa-brands fa-spotify input-brand-icon"></i>
+          <input 
+            type="url" 
+            id="spotify-url-input" 
+            class="main-input" 
+            placeholder="Spotify Çalma Listesi, Albüm veya Şarkı linki yapıştırın..." 
+            required
+            autocomplete="off"
+          />
+          <button type="button" class="btn-input-action" id="btn-paste" title="Panodan Yapıştır">
+            <i class="fa-regular fa-paste"></i>
+            <span>Yapıştır</span>
+          </button>
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-fetch">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span id="btn-fetch-text">Listeyi Getir</span>
+          <div class="spinner hidden" id="fetch-spinner"></div>
+        </button>
+      </form>
+
+      <!-- Quick Sample Buttons -->
+      <div class="sample-links">
+        <span class="sample-label"><i class="fa-solid fa-lightbulb"></i> Örnek Linkler:</span>
+        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M">
+          🔥 Today's Top Hits
+        </button>
+        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO">
+          Peaceful Piano
+        </button>
+        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX10zKzsJ2jva">
+          Viva Latino
+        </button>
+      </div>
+    </section>
+
+    <!-- Playlist Overview & Action Bar (Hidden initially) -->
+    <section id="playlist-section" class="playlist-section hidden">
+      <div class="playlist-header-card card">
+        <div class="playlist-cover-wrapper">
+          <img id="pl-cover" src="/static/img/placeholder.svg" alt="Cover Art" class="playlist-cover" />
+          <div class="cover-badge" id="pl-badge">PLAYLIST</div>
+        </div>
+
+        <div class="playlist-info">
+          <div class="pl-type" id="pl-type-label">SPOTIFY ÇALMA LİSTESİ</div>
+          <h2 class="playlist-title" id="pl-title">Çalma Listesi Başlığı</h2>
+          <p class="playlist-desc" id="pl-desc"></p>
+          
+          <div class="playlist-meta-row">
+            <span class="meta-item"><i class="fa-solid fa-user"></i> <span id="pl-owner">Spotify</span></span>
+            <span class="meta-dot">•</span>
+            <span class="meta-item"><i class="fa-solid fa-music"></i> <span id="pl-track-count">0</span> Şarkı</span>
+            <span class="meta-dot">•</span>
+            <span class="meta-item"><i class="fa-regular fa-clock"></i> <span id="pl-total-duration">--:--</span></span>
+            <span class="meta-dot">•</span>
+            <span class="meta-item"><i class="fa-solid fa-folder"></i> <span id="pl-dest-folder">music/</span></span>
+          </div>
+
+          <!-- Action Buttons Row -->
+          <div class="playlist-actions-row">
+            <button class="btn btn-primary btn-lg" id="btn-download-all">
+              <i class="fa-solid fa-circle-down"></i>
+              <span>Tümünü İndir (<span id="selected-count-label">0</span>)</span>
+            </button>
+            <button class="btn btn-danger btn-lg hidden" id="btn-cancel-all">
+              <i class="fa-solid fa-circle-stop"></i>
+              <span>İndirmeyi Durdur</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-open-music-folder">
+              <i class="fa-solid fa-folder-tree"></i>
+              <span>Klasörü Aç</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overall Progress Card -->
+      <div class="progress-card card" id="overall-progress-card">
+        <div class="progress-header">
+          <div class="progress-info-left">
+            <span class="progress-title"><i class="fa-solid fa-bars-progress"></i> Genel İndirme İlerlemesi</span>
+            <span class="progress-stats" id="overall-stats-text">0 / 0 Tamamlandı</span>
+          </div>
+          <div class="progress-percent" id="overall-percent-text">0%</div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="overall-progress-bar" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Tracks Table Header Controls -->
+      <div class="tracks-toolbar">
+        <div class="toolbar-left">
+          <label class="custom-checkbox-wrapper select-all-box">
+            <input type="checkbox" id="select-all-checkbox" checked>
+            <span class="checkbox-custom"></span>
+            <span class="toolbar-label">Tümünü Seç</span>
+          </label>
+          <span class="selected-badge" id="selected-badge">0 seçili</span>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="search-filter-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="track-filter-input" placeholder="Şarkı veya sanatçı filtrele..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tracks List Table -->
+      <div class="table-container card">
+        <table class="tracks-table">
+          <thead>
+            <tr>
+              <th width="40"></th>
+              <th width="40">#</th>
+              <th>Şarkı & Sanatçı</th>
+              <th>Albüm</th>
+              <th width="80"><i class="fa-regular fa-clock"></i> Süre</th>
+              <th width="200">Durum</th>
+              <th width="140" style="text-align: right;">İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="tracks-tbody">
+            <!-- Dynamic Track Rows Inserted Here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-state-icon">
+        <i class="fa-solid fa-cloud-arrow-down"></i>
+      </div>
+      <h3>Henüz bir liste getirilmedi</h3>
+      <p>Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve <strong>"Listeyi Getir"</strong> butonuna basın.</p>
+    </div>
+  </main>
+
+  <!-- Audio Player Floating Bar (When previewing) -->
+  <div id="floating-player" class="floating-player hidden">
+    <div class="player-content container">
+      <div class="player-track-info">
+        <img id="player-thumb" src="/static/img/placeholder.svg" alt="Thumb" class="player-thumb" />
+        <div class="player-text">
+          <div class="player-title" id="player-title">Şarkı Adı</div>
+          <div class="player-artist" id="player-artist">Sanatçı</div>
+        </div>
+      </div>
+      <div class="player-controls">
+        <audio id="native-audio" controls autoplay></audio>
+      </div>
+      <button class="btn-icon" id="player-close" title="Kapat">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay hidden" id="settings-modal">
+    <div class="modal-card card">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-sliders"></i> Uygulama Ayarları</h3>
+        <button class="btn-icon modal-close" id="btn-close-settings">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Output Directory -->
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fa-solid fa-folder"></i> İndirme Klasörü (Hedef Dizin):
+          </label>
+          <div class="input-with-action">
+            <input type="text" id="setting-output-dir" class="form-input" placeholder="music/" />
+            <button type="button" class="btn btn-secondary" id="btn-open-dir-settings">
+              <i class="fa-solid fa-folder-open"></i> Aç
+            </button>
+          </div>
+          <small class="form-hint">Varsayılan olarak proje içerisindeki <code>music/</code> klasörüne kaydedilir.</small>
+        </div>
+
+        <!-- Audio Bitrate -->
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fa-solid fa-wave-square"></i> MP3 Ses Kalitesi (Bitrate):
+          </label>
+          <select id="setting-bitrate" class="form-select">
+            <option value="320" selected>320 kbps (En Yüksek / Stüdyo Kalitesi - Önerilen)</option>
+            <option value="256">256 kbps (Yüksek Kalite)</option>
+            <option value="192">192 kbps (Standart Kalite)</option>
+            <option value="128">128 kbps (Düşük Boyut)</option>
+          </select>
+        </div>
+
+        <!-- Optional Spotify API Keys -->
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fa-brands fa-spotify"></i> Özel Spotify API Anahtarları (İsteğe Bağlı):
+          </label>
+          <input type="text" id="setting-client-id" class="form-input" placeholder="Spotify Client ID (Boş bırakılabilir)" />
+          <input type="password" id="setting-client-secret" class="form-input mt-2" placeholder="Spotify Client Secret (Boş bırakılabilir)" />
+          <small class="form-hint">Standart indirmelerde API anahtarına gerek yoktur, uygulama otomatik ayrıştırma yapar.</small>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-settings">İptal</button>
+        <button class="btn btn-primary" id="btn-save-settings">
+          <i class="fa-solid fa-check"></i> Kaydet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- App JavaScript -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
