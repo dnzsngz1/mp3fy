@@ -2,6 +2,10 @@
 
 <div align="center">
 
+<img src="web/static/img/logo.jpg" alt="MP3fy Logo" width="120" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" />
+
+### MP3fy
+
 ![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
@@ -18,7 +22,7 @@
 ## ✨ Özellikler
 
 - 🎧 **Spotify'dan Kolay İndirme:** Çalma listesi (Playlist), Albüm (Album) veya Tekil Şarkı (Track) bağlantılarını doğrudan yapıştırarak anında indirin.
-- 📂 **Otomatik `music/` Klasörü Yönetimi:** İndirilen tüm MP3'ler doğrudan projedeki `music/` klasörüne (veya ayarlardan seçtiğiniz özel dizine) düzenli bir şekilde kaydedilir. Arayüzdeki *"Music Klasörünü Aç"* butonuyla tek tıkla klasöre erişebilirsiniz.
+- 📂 **Kullanıcı Ev Dizini `~/Music` Entegrasyonu:** İndirilen tüm MP3'ler doğrudan kullanıcının kendi ev dizinindeki `~/Music` (veya `~/Müzik`) klasörüne düzenli bir şekilde kaydedilir. Arayüzdeki *"Music Klasörü"* butonuyla tek tıkla dosya yöneticisinde açabilirsiniz.
 - 🏷️ **Eksiksiz ID3 Etiketleme (Metadata):**
   - 🖼️ **Yüksek Çözünürlüklü Albüm Kapağı (APIC Cover Art):** Spotify'daki orijinal kapak görseli MP3 dosyasına doğrudan gömülür.
   - 🎤 **Sanatçı (Artist / Performer):** `TPE1`
@@ -136,7 +140,7 @@ mp3fy/
 │   ├── spotify.py          # Spotify URL ayrıştırma ve metadata çekici
 │   ├── downloader.py       # yt-dlp ile ses indirme ve ffmpeg dönüştürme
 │   ├── tagger.py           # mutagen ile ID3 etiketleme ve kapak görseli gömme
-│   └── utils.py            # Dosya adı temizleme, klasör yönetimi, sistem araçları
+│   └── utils.py            # Dosya adı temizleme, ev dizini (~/Music) tespiti
 ├── web/
 │   ├── static/
 │   │   ├── css/
@@ -144,10 +148,10 @@ mp3fy/
 │   │   ├── js/
 │   │   │   └── app.js      # WebSocket bağlantısı, tema geçişi, canlı indirme paneli
 │   │   └── img/
+│   │       ├── logo.jpg    # Uygulama logosu
 │   │       └── placeholder.svg
 │   └── templates/
 │       └── index.html      # Ana sayfa, tema düğmesi, indirme tablosu
-├── music/                  # İndirilen MP3 dosyalarının kaydedildiği klasör (.gitkeep)
 ├── tests/
 │   └── test_core.py        # Birim testleri
 ├── app.py                  # FastAPI/Uvicorn ana uygulama ve WebSocket sunucusu

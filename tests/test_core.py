@@ -34,6 +34,12 @@ class TestUtils(unittest.TestCase):
             self.assertTrue(res.exists())
             self.assertTrue(res.is_dir())
 
+    def test_get_default_music_dir(self):
+        from core.utils import get_default_music_dir
+        music_dir = get_default_music_dir()
+        self.assertTrue(music_dir.exists())
+        self.assertTrue(music_dir.is_dir())
+
 
 class TestSpotifyParser(unittest.TestCase):
     def test_parse_urls(self):

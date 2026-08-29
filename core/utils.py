@@ -65,12 +65,18 @@ def ensure_directory(path: str | Path) -> Path:
 
 def get_default_music_dir() -> Path:
     """
-    Get the default music directory in the project root.
+    Get the default music directory in the user's home directory (e.g. ~/Music or ~/Müzik).
     """
-    root_dir = Path(__file__).resolve().parent.parent
-    music_dir = root_dir / "music"
-    ensure_directory(music_dir)
-    return music_dir
+    home = Path.home()
+    for folder_name in ["Music", "Müzik", "music", "müzik"]:
+        candidate = home / folder_name
+        if candidate.exists() and candidate.is_dir():
+            return candidate
+
+    # Fallback: create and return ~/Music
+    default_dir = home / "Music"
+    ensure_directory(default_dir)
+    return default_dir
 
 
 def open_folder_in_explorer(folder_path: str | Path) -> bool:

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MP3fy - Spotify MP3 İndirici & Dönüştürücü</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="icon" type="image/jpeg" href="/static/img/logo.jpg">
   
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,8 +26,8 @@
   <header class="app-header">
     <div class="container header-content">
       <div class="logo-group">
-        <div class="logo-icon">
-          <i class="fa-brands fa-spotify"></i>
+        <div class="logo-icon-wrapper">
+          <img src="/static/img/logo.jpg" alt="MP3fy Logo" class="app-logo-img" />
         </div>
         <div class="logo-text">
           <span class="logo-title">MP3<span class="brand-accent">fy</span></span>
@@ -37,7 +37,7 @@
 
       <div class="header-actions">
         <!-- Open Music Folder Button -->
-        <button class="btn btn-secondary" id="btn-open-folder" title="İndirilenlerin kaydedildiği 'music' klasörünü aç">
+        <button class="btn btn-secondary" id="btn-open-folder" title="Ev dizinindeki 'Music' klasörünü aç">
           <i class="fa-solid fa-folder-open"></i>
           <span class="btn-text">Music Klasörü</span>
         </button>
@@ -250,12 +250,12 @@
             <i class="fa-solid fa-folder"></i> İndirme Klasörü (Hedef Dizin):
           </label>
           <div class="input-with-action">
-            <input type="text" id="setting-output-dir" class="form-input" placeholder="music/" />
+            <input type="text" id="setting-output-dir" class="form-input" placeholder="~/Music" />
             <button type="button" class="btn btn-secondary" id="btn-open-dir-settings">
               <i class="fa-solid fa-folder-open"></i> Aç
             </button>
           </div>
-          <small class="form-hint">Varsayılan olarak proje içerisindeki <code>music/</code> klasörüne kaydedilir.</small>
+          <small class="form-hint">Varsayılan olarak kullanıcının ev dizinindeki <code>~/Music</code> klasörüne kaydedilir.</small>
         </div>
 
         <!-- Audio Bitrate -->

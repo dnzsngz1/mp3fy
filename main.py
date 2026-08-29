@@ -129,7 +129,10 @@ def main():
     parser.add_argument("--port", type=int, default=8888, help="Web sunucu portu (Varsayılan: 8888)")
     parser.add_argument("--no-browser", action="store_true", help="Tarayıcıyı otomatik açma")
     parser.add_argument(
-        "-o", "--output", default="music", help="İndirilen MP3 dosyalarının kaydedileceği klasör (Varsayılan: music/)"
+        "-o",
+        "--output",
+        default=None,
+        help="İndirilen MP3 dosyalarının kaydedileceği klasör (Varsayılan: Ev dizini ~/Music)",
     )
     parser.add_argument("-b", "--bitrate", default="320", choices=["128", "192", "256", "320"], help="MP3 Bitrate (Varsayılan: 320)")
     parser.add_argument("-w", "--workers", type=int, default=2, help="Eşzamanlı indirme sayısı (Varsayılan: 2)")
@@ -138,7 +141,7 @@ def main():
 
     # If URL is provided and not in web mode, run CLI
     if args.url and not args.web:
-        out_path = Path(args.output).resolve()
+        out_path = Path(args.output).resolve() if args.output else get_default_music_dir()
         ensure_directory(out_path)
         run_cli_download(args.url, out_path, args.bitrate, args.workers)
     else:
