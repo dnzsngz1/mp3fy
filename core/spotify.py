@@ -1,11 +1,12 @@
 """
-Spotify URL Parser and Metadata Fetcher for MP3fy
-Supports Playlists, Albums, and Tracks without requiring Spotify API keys (with optional API key support).
+Spotify URL Parser and Metadata Fetcher for MP3fy.
+Supports Playlists (with 100+ track pagination and 100-track batching), Albums, and Tracks.
 """
 
 import re
 import json
 import logging
+import math
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Tuple, Dict, Any
 import requests
@@ -39,6 +40,19 @@ class SongMetadata:
     cover_url: Optional[str] = None
     preview_url: Optional[str] = None
     spotify_url: str = ""
+    batch_index: int = 1  # 1-based index for 100-track chunks (e.g. 1 for 1-100, 2 for 101-200)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class BatchInfo:
+    batch_index: int
+    start_index: int
+    end_index: int
+    count: int
+    name: str
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -54,6 +68,7 @@ class PlaylistMetadata:
     total_tracks: int = 0
     type: str = "playlist"  # playlist, album, track
     tracks: List[SongMetadata] = field(default_factory=list)
+    batches: List[BatchInfo] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -64,6 +79,7 @@ class PlaylistMetadata:
             "cover_url": self.cover_url,
             "total_tracks": self.total_tracks,
             "type": self.type,
+            "batches": [b.to_dict() for b in self.batches],
             "tracks": [t.to_dict() for t in self.tracks],
         }
 
@@ -103,9 +119,39 @@ def _format_duration(duration_ms: int) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
+def _create_batches(tracks: List[SongMetadata], batch_size: int = 100) -> List[BatchInfo]:
+    """Divides tracks into 100-track sections."""
+    if not tracks:
+        return []
+    
+    total = len(tracks)
+    num_batches = math.ceil(total / batch_size)
+    batches = []
+    
+    for b_idx in range(1, num_batches + 1):
+        start = (b_idx - 1) * batch_size + 1
+        end = min(b_idx * batch_size, total)
+        count = end - start + 1
+        name = f"Bölüm {b_idx} ({start} - {end})"
+        batches.append(BatchInfo(
+            batch_index=b_idx,
+            start_index=start,
+            end_index=end,
+            count=count,
+            name=name
+        ))
+        
+        # Tag tracks with batch_index
+        for track in tracks[start - 1 : end]:
+            track.batch_index = b_idx
+            
+    return batches
+
+
 class SpotifyFetcher:
     """
-    Handles fetching Spotify metadata using Embed scraping or official Spotipy API.
+    Handles fetching Spotify metadata using Spotapi (supports all 100+ tracks),
+    Spotify Embed scraping fallback, or official Spotipy API.
     """
 
     def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None):
@@ -142,17 +188,118 @@ class SpotifyFetcher:
                 elif entity_type == "track":
                     return self._fetch_track_api(entity_id)
             except Exception as e:
-                logger.warning(f"Spotify API request failed, falling back to embed scraper: {e}")
+                logger.warning(f"Spotify API request failed, falling back to public scraper: {e}")
 
-        # Fallback to embed scraper (Zero config required!)
+        # Try Spotapi / Public scraper first (handles full 100+ playlists!)
         if entity_type == "playlist":
-            return self._fetch_playlist_embed(entity_id)
+            try:
+                return self._fetch_playlist_spotapi(entity_id)
+            except Exception as e:
+                logger.warning(f"Spotapi fetch failed ({e}), falling back to embed scraper.")
+                return self._fetch_playlist_embed(entity_id)
         elif entity_type == "album":
             return self._fetch_album_embed(entity_id)
         elif entity_type == "track":
             return self._fetch_track_embed(entity_id)
 
         return None
+
+    def _fetch_playlist_spotapi(self, playlist_id: str) -> PlaylistMetadata:
+        """Fetch complete playlist (all 100+ tracks) using spotapi."""
+        import spotapi
+
+        # Get header info from embed first (for high-res cover, title, owner)
+        title = "Spotify Çalma Listesi"
+        owner = "Spotify"
+        description = ""
+        cover_url = None
+
+        try:
+            embed_url = f"https://open.spotify.com/embed/playlist/{playlist_id}"
+            resp = requests.get(embed_url, headers=HTTP_HEADERS, timeout=8)
+            if resp.status_code == 200:
+                match = re.search(r"<script id=\"__NEXT_DATA__\"[^>]*>(.*?)</script>", resp.text)
+                if match:
+                    data = json.loads(match.group(1))
+                    entity = (
+                        data.get("props", {})
+                        .get("pageProps", {})
+                        .get("state", {})
+                        .get("data", {})
+                        .get("entity", {})
+                    )
+                    title = entity.get("title") or entity.get("name") or title
+                    owner = entity.get("subtitle") or entity.get("owner", {}).get("name") or owner
+                    description = entity.get("description") or ""
+                    cover_sources = entity.get("coverArt", {}).get("sources", [])
+                    if cover_sources:
+                        cover_url = cover_sources[0].get("url")
+                    elif entity.get("visualIdentity", {}).get("image"):
+                        cover_url = entity["visualIdentity"]["image"][0].get("url")
+        except Exception as e:
+            logger.debug(f"Could not get embed header: {e}")
+
+        public_api = spotapi.Public()
+        tracks: List[SongMetadata] = []
+        raw_pages = list(public_api.playlist_info(playlist_id))
+
+        for page in raw_pages:
+            items = page.get("items", [])
+            for it in items:
+                data_v2 = it.get("itemV2", {}).get("data", {})
+                if not data_v2:
+                    continue
+                t_title = data_v2.get("name") or "Bilinmeyen Parça"
+                artists_items = data_v2.get("artists", {}).get("items", [])
+                t_artist = ", ".join([a.get("profile", {}).get("name", "") for a in artists_items if a.get("profile", {}).get("name")]) or owner
+                album_info = data_v2.get("albumOfTrack", {})
+                album_name = album_info.get("name", title)
+                duration_ms = data_v2.get("trackDuration", {}).get("totalMilliseconds", 0)
+                cover_sources = album_info.get("coverArt", {}).get("sources", [])
+                t_cover = cover_sources[-1]["url"] if cover_sources else cover_url
+                uri = data_v2.get("uri", "")
+                t_id = uri.split(":")[-1] if uri else f"track_{len(tracks)+1}"
+                date_info = album_info.get("date", {})
+                year = date_info.get("isoString", "")[:4] if date_info.get("isoString") else None
+
+                track_idx = len(tracks) + 1
+                song = SongMetadata(
+                    id=t_id,
+                    title=t_title,
+                    artist=t_artist,
+                    album=album_name,
+                    year=year,
+                    track_number=track_idx,
+                    duration_ms=duration_ms,
+                    duration_formatted=_format_duration(duration_ms),
+                    cover_url=t_cover,
+                    preview_url=None,
+                    spotify_url=f"https://open.spotify.com/track/{t_id}",
+                )
+                tracks.append(song)
+
+        if not tracks:
+            # If spotapi yielded 0 tracks, fallback to embed
+            return self._fetch_playlist_embed(playlist_id)
+
+        # Update total tracks count on each song
+        total_count = len(tracks)
+        for t in tracks:
+            t.total_tracks = total_count
+
+        batches = _create_batches(tracks, batch_size=100)
+
+        return PlaylistMetadata(
+            id=playlist_id,
+            title=title,
+            description=description,
+            owner=owner,
+            cover_url=cover_url,
+            total_tracks=total_count,
+            type="playlist",
+            tracks=tracks,
+            batches=batches,
+        )
 
     def _fetch_playlist_embed(self, playlist_id: str) -> PlaylistMetadata:
         embed_url = f"https://open.spotify.com/embed/playlist/{playlist_id}"
@@ -213,6 +360,8 @@ class SpotifyFetcher:
             )
             tracks.append(song)
 
+        batches = _create_batches(tracks, batch_size=100)
+
         return PlaylistMetadata(
             id=playlist_id,
             title=title,
@@ -222,6 +371,7 @@ class SpotifyFetcher:
             total_tracks=len(tracks),
             type="playlist",
             tracks=tracks,
+            batches=batches,
         )
 
     def _fetch_album_embed(self, album_id: str) -> PlaylistMetadata:
@@ -294,6 +444,8 @@ class SpotifyFetcher:
             )
             tracks.append(song)
 
+        batches = _create_batches(tracks, batch_size=100)
+
         return PlaylistMetadata(
             id=album_id,
             title=title,
@@ -303,6 +455,7 @@ class SpotifyFetcher:
             total_tracks=len(tracks),
             type="album",
             tracks=tracks,
+            batches=batches,
         )
 
     def _fetch_track_embed(self, track_id: str) -> PlaylistMetadata:
@@ -346,12 +499,10 @@ class SpotifyFetcher:
         cover_url = None
         images = entity.get("visualIdentity", {}).get("image", [])
         if images:
-            # Sort by width or pick the largest
             cover_url = images[-1].get("url") or images[0].get("url")
         elif entity.get("coverArt", {}).get("sources"):
             cover_url = entity["coverArt"]["sources"][0].get("url")
 
-        # Also fallback to oEmbed thumbnail if not found
         if not cover_url:
             try:
                 oemb = requests.get(
@@ -376,7 +527,10 @@ class SpotifyFetcher:
             cover_url=cover_url,
             preview_url=preview_url,
             spotify_url=f"https://open.spotify.com/track/{track_id}",
+            batch_index=1,
         )
+
+        batches = _create_batches([song], batch_size=100)
 
         return PlaylistMetadata(
             id=track_id,
@@ -387,6 +541,7 @@ class SpotifyFetcher:
             total_tracks=1,
             type="track",
             tracks=[song],
+            batches=batches,
         )
 
     def _fetch_playlist_api(self, playlist_id: str) -> PlaylistMetadata:
@@ -406,6 +561,7 @@ class SpotifyFetcher:
             results = sp.next(results)
             track_items.extend(results.get("items", []))
 
+        total_count = len(track_items)
         for idx, item in enumerate(track_items, start=1):
             t = item.get("track")
             if not t:
@@ -430,7 +586,7 @@ class SpotifyFetcher:
                     album=album_name,
                     year=year,
                     track_number=idx,
-                    total_tracks=len(track_items),
+                    total_tracks=total_count,
                     duration_ms=duration_ms,
                     duration_formatted=_format_duration(duration_ms),
                     cover_url=t_cover,
@@ -438,6 +594,8 @@ class SpotifyFetcher:
                     spotify_url=t.get("external_urls", {}).get("spotify", f"https://open.spotify.com/track/{t_id}"),
                 )
             )
+
+        batches = _create_batches(tracks, batch_size=100)
 
         return PlaylistMetadata(
             id=playlist_id,
@@ -448,6 +606,7 @@ class SpotifyFetcher:
             total_tracks=len(tracks),
             type="playlist",
             tracks=tracks,
+            batches=batches,
         )
 
     def _fetch_album_api(self, album_id: str) -> PlaylistMetadata:
@@ -462,6 +621,7 @@ class SpotifyFetcher:
 
         tracks: List[SongMetadata] = []
         track_items = alb.get("tracks", {}).get("items", [])
+        total_count = len(track_items)
         for idx, t in enumerate(track_items, start=1):
             t_id = t.get("id") or f"track_{idx}"
             t_title = t.get("name", "Unknown Track")
@@ -476,7 +636,7 @@ class SpotifyFetcher:
                     album=title,
                     year=year,
                     track_number=idx,
-                    total_tracks=len(track_items),
+                    total_tracks=total_count,
                     duration_ms=duration_ms,
                     duration_formatted=_format_duration(duration_ms),
                     cover_url=cover_url,
@@ -484,6 +644,8 @@ class SpotifyFetcher:
                     spotify_url=t.get("external_urls", {}).get("spotify", f"https://open.spotify.com/track/{t_id}"),
                 )
             )
+
+        batches = _create_batches(tracks, batch_size=100)
 
         return PlaylistMetadata(
             id=album_id,
@@ -494,6 +656,7 @@ class SpotifyFetcher:
             total_tracks=len(tracks),
             type="album",
             tracks=tracks,
+            batches=batches,
         )
 
     def _fetch_track_api(self, track_id: str) -> PlaylistMetadata:
@@ -522,7 +685,10 @@ class SpotifyFetcher:
             cover_url=cover_url,
             preview_url=t.get("preview_url"),
             spotify_url=t.get("external_urls", {}).get("spotify", f"https://open.spotify.com/track/{track_id}"),
+            batch_index=1,
         )
+
+        batches = _create_batches([song], batch_size=100)
 
         return PlaylistMetadata(
             id=track_id,
@@ -533,4 +699,5 @@ class SpotifyFetcher:
             total_tracks=1,
             type="track",
             tracks=[song],
+            batches=batches,
         )

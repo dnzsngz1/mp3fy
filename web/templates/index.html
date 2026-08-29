@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP3fy - Spotify MP3 İndirici & Dönüştürücü</title>
+  <title>MP3fy - Listenizin Gerçek Sahibi Olun!</title>
   <link rel="icon" type="image/jpeg" href="/static/img/logo.jpg">
   
-  <!-- Google Fonts: Inter -->
+  <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,11 +18,11 @@
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <!-- Background Glow FX -->
+  <!-- Ambient Atmospheric Lighting -->
   <div class="ambient-glow ambient-1"></div>
   <div class="ambient-glow ambient-2"></div>
 
-  <!-- Header -->
+  <!-- Header matching screen.png -->
   <header class="app-header">
     <div class="container header-content">
       <div class="logo-group">
@@ -31,28 +31,23 @@
         </div>
         <div class="logo-text">
           <span class="logo-title">MP3<span class="brand-accent">fy</span></span>
-          <span class="badge-version">v1.0</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <!-- Open Music Folder Button -->
-        <button class="btn btn-secondary" id="btn-open-folder" title="Ev dizinindeki 'Music' klasörünü aç">
-          <i class="fa-solid fa-folder-open"></i>
+        <!-- Open Music Folder Button (Lavender Pill Button) -->
+        <button class="btn btn-lavender" id="btn-open-folder" title="Ev dizinindeki 'Music' klasörünü aç">
+          <i class="fa-regular fa-folder-open"></i>
           <span class="btn-text">Music Klasörü</span>
         </button>
 
         <!-- Settings Button -->
-        <button class="btn btn-icon" id="btn-settings-open" title="Ayarlar">
+        <button class="btn btn-icon-dark" id="btn-settings-open" title="Ayarlar">
           <i class="fa-solid fa-gear"></i>
         </button>
 
-        <!-- Siyah / Beyaz Tema Düğmesi (Theme Switcher) -->
-        <button class="theme-toggle-btn" id="theme-toggle" title="Siyah / Beyaz Tema Değiştir" aria-label="Tema Değiştir">
-          <div class="theme-icon-container">
-            <i class="fa-solid fa-moon moon-icon"></i>
-            <i class="fa-solid fa-sun sun-icon"></i>
-          </div>
+        <!-- Siyah / Beyaz Tema Düğmesi (Theme Switcher Pill) -->
+        <button class="theme-pill-btn" id="theme-toggle" title="Siyah / Beyaz Tema Değiştir" aria-label="Tema Değiştir">
           <span class="theme-label" id="theme-label-text">Karanlık</span>
         </button>
       </div>
@@ -61,37 +56,36 @@
 
   <!-- Main Container -->
   <main class="main-container container">
-    <!-- Hero / Input Section -->
-    <section class="hero-section card">
+    <!-- Hero / Input Section matching screen.png -->
+    <section class="hero-section hero-card">
       <div class="hero-text">
-        <h1 class="hero-title">Spotify Parça & Çalma Listesi İndirici</h1>
-        <p class="hero-subtitle">
-          Bağlantıyı yapıştırın, yüksek kaliteli MP3 (320kbps) olarak indirin. Albüm kapağı, sanatçı ve tüm ID3 etiketleri otomatik eklenir.
-        </p>
+        <h1 class="hero-title">Listenizin gerçek sahibi olun!</h1>
       </div>
 
-      <!-- URL Input Box -->
-      <form id="fetch-form" class="url-input-form">
-        <div class="input-wrapper">
-          <i class="fa-brands fa-spotify input-brand-icon"></i>
+      <!-- URL Input Box (Seamless Pill Input Bar) -->
+      <form id="fetch-form" class="url-input-form-v2">
+        <div class="input-pill-container">
+          <i class="fa-solid fa-link input-link-icon"></i>
           <input 
             type="url" 
             id="spotify-url-input" 
-            class="main-input" 
+            class="main-input-v2" 
             placeholder="Spotify Çalma Listesi, Albüm veya Şarkı linki yapıştırın..." 
             required
             autocomplete="off"
           />
-          <button type="button" class="btn-input-action" id="btn-paste" title="Panodan Yapıştır">
-            <i class="fa-regular fa-paste"></i>
-            <span>Yapıştır</span>
-          </button>
+          <div class="input-actions-group">
+            <button type="button" class="btn btn-dark-pill" id="btn-paste" title="Panodan Yapıştır">
+              <i class="fa-regular fa-clipboard"></i>
+              <span>Yapıştır</span>
+            </button>
+            <button type="submit" class="btn btn-lavender-action" id="btn-fetch">
+              <i class="fa-solid fa-arrow-down-to-bracket" id="btn-fetch-icon"></i>
+              <span id="btn-fetch-text">Listeyi Getir</span>
+              <div class="spinner hidden" id="fetch-spinner"></div>
+            </button>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary" id="btn-fetch">
-          <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span id="btn-fetch-text">Listeyi Getir</span>
-          <div class="spinner hidden" id="fetch-spinner"></div>
-        </button>
       </form>
 
       <!-- Quick Sample Buttons -->
@@ -106,11 +100,15 @@
         <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX10zKzsJ2jva">
           Viva Latino
         </button>
+        <button class="sample-chip" data-url="https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd">
+          All Out 2000s (150 Şarkı)
+        </button>
       </div>
     </section>
 
-    <!-- Playlist Overview & Action Bar (Hidden initially) -->
+    <!-- Playlist Overview & 100-Track Batch Sections (Hidden initially) -->
     <section id="playlist-section" class="playlist-section hidden">
+      <!-- Playlist Summary Card -->
       <div class="playlist-header-card card">
         <div class="playlist-cover-wrapper">
           <img id="pl-cover" src="/static/img/placeholder.svg" alt="Cover Art" class="playlist-cover" />
@@ -129,23 +127,33 @@
             <span class="meta-dot">•</span>
             <span class="meta-item"><i class="fa-regular fa-clock"></i> <span id="pl-total-duration">--:--</span></span>
             <span class="meta-dot">•</span>
-            <span class="meta-item"><i class="fa-solid fa-folder"></i> <span id="pl-dest-folder">music/</span></span>
+            <span class="meta-item"><i class="fa-solid fa-folder-open"></i> <span id="pl-dest-folder">~/Music</span></span>
           </div>
 
-          <!-- Action Buttons Row -->
+          <!-- Main Actions -->
           <div class="playlist-actions-row">
-            <button class="btn btn-primary btn-lg" id="btn-download-all">
+            <button class="btn btn-lavender-action btn-lg" id="btn-download-all">
               <i class="fa-solid fa-circle-down"></i>
               <span>Tümünü İndir (<span id="selected-count-label">0</span>)</span>
             </button>
+            <button class="btn btn-secondary btn-lg" id="btn-download-active-batch">
+              <i class="fa-solid fa-download"></i>
+              <span id="btn-batch-download-text">Bu Bölümü İndir (100)</span>
+            </button>
             <button class="btn btn-danger btn-lg hidden" id="btn-cancel-all">
               <i class="fa-solid fa-circle-stop"></i>
-              <span>İndirmeyi Durdur</span>
+              <span>Durdur</span>
             </button>
-            <button class="btn btn-secondary" id="btn-open-music-folder">
-              <i class="fa-solid fa-folder-tree"></i>
-              <span>Klasörü Aç</span>
-            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 100-Track Batch Selector Tabs (Yüzlük Bölümler Çubuğu) -->
+      <div id="batch-tabs-container" class="batch-tabs-container">
+        <div class="batch-tabs-header">
+          <span class="batch-tabs-title"><i class="fa-solid fa-layer-group"></i> Bölümler:</span>
+          <div class="batch-tabs-list" id="batch-tabs-list">
+            <!-- Dynamic Batch Pills e.g. [Tümü (150)] [Bölüm 1 (1-100)] [Bölüm 2 (101-150)] -->
           </div>
         </div>
       </div>
@@ -154,7 +162,7 @@
       <div class="progress-card card" id="overall-progress-card">
         <div class="progress-header">
           <div class="progress-info-left">
-            <span class="progress-title"><i class="fa-solid fa-bars-progress"></i> Genel İndirme İlerlemesi</span>
+            <span class="progress-title"><i class="fa-solid fa-bars-progress"></i> İndirme İlerlemesi</span>
             <span class="progress-stats" id="overall-stats-text">0 / 0 Tamamlandı</span>
           </div>
           <div class="progress-percent" id="overall-percent-text">0%</div>
@@ -164,13 +172,13 @@
         </div>
       </div>
 
-      <!-- Tracks Table Header Controls -->
+      <!-- Tracks Toolbar Controls -->
       <div class="tracks-toolbar">
         <div class="toolbar-left">
           <label class="custom-checkbox-wrapper select-all-box">
             <input type="checkbox" id="select-all-checkbox" checked>
             <span class="checkbox-custom"></span>
-            <span class="toolbar-label">Tümünü Seç</span>
+            <span class="toolbar-label">Görünenleri Seç</span>
           </label>
           <span class="selected-badge" id="selected-badge">0 seçili</span>
         </div>
@@ -183,13 +191,13 @@
         </div>
       </div>
 
-      <!-- Tracks List Table -->
+      <!-- Tracks Table -->
       <div class="table-container card">
         <table class="tracks-table">
           <thead>
             <tr>
               <th width="40"></th>
-              <th width="40">#</th>
+              <th width="50">#</th>
               <th>Şarkı & Sanatçı</th>
               <th>Albüm</th>
               <th width="80"><i class="fa-regular fa-clock"></i> Süre</th>
@@ -198,19 +206,19 @@
             </tr>
           </thead>
           <tbody id="tracks-tbody">
-            <!-- Dynamic Track Rows Inserted Here -->
+            <!-- Dynamic Track Rows -->
           </tbody>
         </table>
       </div>
     </section>
 
-    <!-- Empty State -->
+    <!-- Empty State matching screen.png -->
     <div id="empty-state" class="empty-state">
       <div class="empty-state-icon">
         <i class="fa-solid fa-cloud-arrow-down"></i>
       </div>
-      <h3>Henüz bir liste getirilmedi</h3>
-      <p>Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve <strong>"Listeyi Getir"</strong> butonuna basın.</p>
+      <h3 class="empty-title">Henüz bir liste getirilmedi</h3>
+      <p class="empty-subtitle">Yukarıdaki arama çubuğuna Spotify linkinizi yapıştırın ve <strong>"Listeyi Getir"</strong> butonuna basın.</p>
     </div>
   </main>
 
@@ -227,7 +235,7 @@
       <div class="player-controls">
         <audio id="native-audio" controls autoplay></audio>
       </div>
-      <button class="btn-icon" id="player-close" title="Kapat">
+      <button class="btn-icon-dark" id="player-close" title="Kapat">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
@@ -238,7 +246,7 @@
     <div class="modal-card card">
       <div class="modal-header">
         <h3 class="modal-title"><i class="fa-solid fa-sliders"></i> Uygulama Ayarları</h3>
-        <button class="btn-icon modal-close" id="btn-close-settings">
+        <button class="btn-icon-dark modal-close" id="btn-close-settings">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -284,7 +292,7 @@
 
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-cancel-settings">İptal</button>
-        <button class="btn btn-primary" id="btn-save-settings">
+        <button class="btn btn-lavender-action" id="btn-save-settings">
           <i class="fa-solid fa-check"></i> Kaydet
         </button>
       </div>

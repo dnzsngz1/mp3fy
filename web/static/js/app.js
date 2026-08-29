@@ -1,6 +1,6 @@
 /**
  * MP3fy - Modern Spotify MP3 Downloader
- * Frontend JavaScript Controller
+ * Frontend JavaScript Controller with 100-Track Batching & screen.png UI Design
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,8 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentTasks = {}; // song_id -> task object
   let ws = null;
   let selectedSongIds = new Set();
+  let activeBatchIndex = 0; // 0 = All tracks, 1 = Batch 1 (1-100), 2 = Batch 2 (101-200), etc.
   let appSettings = {
-    output_dir: "music/",
+    output_dir: "~/Music",
     bitrate: "320",
   };
 
@@ -24,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnPaste = document.getElementById("btn-paste");
   const btnFetch = document.getElementById("btn-fetch");
   const btnFetchText = document.getElementById("btn-fetch-text");
+  const btnFetchIcon = document.getElementById("btn-fetch-icon");
   const fetchSpinner = document.getElementById("fetch-spinner");
   const sampleChips = document.querySelectorAll(".sample-chip");
 
@@ -39,9 +41,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const plTotalDuration = document.getElementById("pl-total-duration");
   const plDestFolder = document.getElementById("pl-dest-folder");
 
+  // Batch Tabs Elements
+  const batchTabsContainer = document.getElementById("batch-tabs-container");
+  const batchTabsList = document.getElementById("batch-tabs-list");
+  const btnDownloadActiveBatch = document.getElementById("btn-download-active-batch");
+  const btnBatchDownloadText = document.getElementById("btn-batch-download-text");
+
   const btnDownloadAll = document.getElementById("btn-download-all");
   const btnCancelAll = document.getElementById("btn-cancel-all");
-  const btnOpenMusicFolder = document.getElementById("btn-open-music-folder");
   const btnHeaderOpenFolder = document.getElementById("btn-open-folder");
   const selectedCountLabel = document.getElementById("selected-count-label");
 
@@ -78,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const toastContainer = document.getElementById("toast-container");
 
   /* ==========================================
-     1. THEME TOGGLE (Siyah / Beyaz Tema Düğmesi)
+     1. THEME TOGGLE (Siyah / Beyaz Tema)
      ========================================== */
   function initTheme() {
     const savedTheme = localStorage.getItem("mp3fy_theme") || "dark";
@@ -157,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
       settingOutputDir.value = data.output_dir;
       settingBitrate.value = data.bitrate;
       if (data.spotify_client_id) settingClientId.value = data.spotify_client_id;
-      plDestFolder.textContent = data.output_dir.endsWith("/") ? data.output_dir : data.output_dir + "/";
+      plDestFolder.textContent = data.output_dir;
     } catch (e) {
       console.error("Error loading settings:", e);
     }
@@ -206,9 +213,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/open-folder", { method: "POST" });
       const data = await res.json();
       if (data.status === "success") {
-        showToast(`Klasör açıldı: ${data.path}`, "success");
+        showToast(`Music klasörü açıldı: ${data.path}`, "success");
       } else {
-        showToast("Klasör açılamadı. Dizin oluşturulmamış olabilir.", "error");
+        showToast("Klasör açılamadı.", "error");
       }
     } catch (e) {
       showToast("Klasör açılırken hata oluştu.", "error");
@@ -216,7 +223,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   btnHeaderOpenFolder.addEventListener("click", openMusicFolder);
-  btnOpenMusicFolder.addEventListener("click", openMusicFolder);
   btnOpenDirSettings.addEventListener("click", openMusicFolder);
 
   /* ==========================================
@@ -261,10 +267,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const resData = await res.json();
 
       if (!res.ok) {
-        throw new Error(resData.detail || "Çalma listesi bilgisi alınamadı.");
+        throw new Error(resData.detail || "Müzik bilgisi alınamadı.");
       }
 
       currentPlaylist = resData.data;
+      activeBatchIndex = 0; // Default to all tracks or first batch
       renderPlaylist(currentPlaylist);
       showToast(`${currentPlaylist.tracks.length} şarkı başarıyla getirildi!`, "success");
     } catch (err) {
@@ -278,16 +285,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isLoading) {
       btnFetch.disabled = true;
       btnFetchText.textContent = "Getiriliyor...";
+      if (btnFetchIcon) btnFetchIcon.classList.add("hidden");
       fetchSpinner.classList.remove("hidden");
     } else {
       btnFetch.disabled = false;
       btnFetchText.textContent = "Listeyi Getir";
+      if (btnFetchIcon) btnFetchIcon.classList.remove("hidden");
       fetchSpinner.classList.add("hidden");
     }
   }
 
   /* ==========================================
-     5. RENDER PLAYLIST & TRACKS
+     5. RENDER PLAYLIST & 100-TRACK BATCHES
      ========================================== */
   function renderPlaylist(playlist) {
     emptyState.classList.add("hidden");
@@ -307,36 +316,117 @@ document.addEventListener("DOMContentLoaded", () => {
     playlist.tracks.forEach((t) => (totalMs += t.duration_ms || 0));
     plTotalDuration.textContent = formatDuration(totalMs);
 
+    // Render Batch Selector Tabs (Yüzlük Bölümler)
+    renderBatchTabs(playlist);
+
     // Reset selection to all tracks
     selectedSongIds = new Set(playlist.tracks.map((t) => t.id));
     selectAllCheckbox.checked = true;
     updateSelectionUI();
 
-    // Render table
-    renderTracksTable(playlist.tracks);
+    // Render tracks table for active batch
+    renderTracksTable();
     updateOverallProgress();
   }
 
-  function renderTracksTable(tracks) {
-    tracksTbody.innerHTML = "";
-    const filterVal = trackFilterInput.value.toLowerCase().trim();
+  function renderBatchTabs(playlist) {
+    batchTabsList.innerHTML = "";
+    const batches = playlist.batches || [];
 
-    tracks.forEach((track, index) => {
-      if (
-        filterVal &&
-        !track.title.toLowerCase().includes(filterVal) &&
-        !track.artist.toLowerCase().includes(filterVal) &&
-        !track.album.toLowerCase().includes(filterVal)
-      ) {
-        return; // Filtered out
+    if (batches.length <= 1) {
+      // If 100 or fewer tracks, single batch mode
+      btnDownloadActiveBatch.classList.add("hidden");
+      const btnAll = document.createElement("button");
+      btnAll.className = "batch-pill-btn active";
+      btnAll.textContent = `Tüm Şarkılar (${playlist.tracks.length})`;
+      btnAll.addEventListener("click", () => {
+        activeBatchIndex = 0;
+        setActiveBatchTab(btnAll);
+        renderTracksTable();
+      });
+      batchTabsList.appendChild(btnAll);
+      return;
+    }
+
+    btnDownloadActiveBatch.classList.remove("hidden");
+
+    // "Tüm Şarkılar" Tab
+    const btnAll = document.createElement("button");
+    btnAll.className = `batch-pill-btn ${activeBatchIndex === 0 ? "active" : ""}`;
+    btnAll.textContent = `✨ Tüm Şarkılar (${playlist.tracks.length})`;
+    btnAll.addEventListener("click", () => {
+      activeBatchIndex = 0;
+      setActiveBatchTab(btnAll);
+      btnDownloadActiveBatch.classList.add("hidden");
+      renderTracksTable();
+    });
+    batchTabsList.appendChild(btnAll);
+
+    // 100-Track Batch Tabs
+    batches.forEach((b) => {
+      const btnBatch = document.createElement("button");
+      btnBatch.className = `batch-pill-btn ${activeBatchIndex === b.batch_index ? "active" : ""}`;
+      btnBatch.textContent = `📦 ${b.name}`;
+      btnBatch.addEventListener("click", () => {
+        activeBatchIndex = b.batch_index;
+        setActiveBatchTab(btnBatch);
+        btnDownloadActiveBatch.classList.remove("hidden");
+        btnBatchDownloadText.textContent = `Bu Bölümü İndir (${b.count} Şarkı)`;
+        renderTracksTable();
+      });
+      batchTabsList.appendChild(btnBatch);
+    });
+
+    if (activeBatchIndex > 0) {
+      const currentB = batches.find((b) => b.batch_index === activeBatchIndex);
+      if (currentB) {
+        btnBatchDownloadText.textContent = `Bu Bölümü İndir (${currentB.count} Şarkı)`;
       }
+    }
+  }
 
+  function setActiveBatchTab(activeButton) {
+    document.querySelectorAll(".batch-pill-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+    activeButton.classList.add("active");
+  }
+
+  function getVisibleTracks() {
+    if (!currentPlaylist) return [];
+    let tracks = currentPlaylist.tracks;
+
+    // Filter by active batch
+    if (activeBatchIndex > 0) {
+      tracks = tracks.filter((t) => t.batch_index === activeBatchIndex);
+    }
+
+    // Filter by search text
+    const filterVal = trackFilterInput.value.toLowerCase().trim();
+    if (filterVal) {
+      tracks = tracks.filter(
+        (t) =>
+          t.title.toLowerCase().includes(filterVal) ||
+          t.artist.toLowerCase().includes(filterVal) ||
+          t.album.toLowerCase().includes(filterVal)
+      );
+    }
+
+    return tracks;
+  }
+
+  function renderTracksTable() {
+    tracksTbody.innerHTML = "";
+    const visibleTracks = getVisibleTracks();
+
+    visibleTracks.forEach((track, index) => {
       const tr = document.createElement("tr");
       tr.id = `row-${track.id}`;
       tr.setAttribute("data-song-id", track.id);
 
       const isChecked = selectedSongIds.has(track.id);
       const task = currentTasks[track.id];
+      const displayIndex = track.track_number || index + 1;
 
       tr.innerHTML = `
         <td>
@@ -345,7 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="checkbox-custom"></span>
           </label>
         </td>
-        <td class="track-index">${index + 1}</td>
+        <td class="track-index">${displayIndex}</td>
         <td>
           <div class="track-main-cell">
             <img src="${track.cover_url || "/static/img/placeholder.svg"}" alt="Thumb" class="track-thumb" />
@@ -366,7 +456,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="track-actions">
             ${
               track.preview_url || (task && task.status === "completed")
-                ? `<button class="btn btn-icon btn-sm btn-play" data-id="${track.id}" title="Önizle / Dinle">
+                ? `<button class="btn btn-icon-dark btn-sm btn-play" data-id="${track.id}" title="Dinle / Önizle">
                      <i class="fa-solid fa-play"></i>
                    </button>`
                 : ""
@@ -383,6 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     attachTrackRowEvents();
+    updateSelectionUI();
   }
 
   function attachTrackRowEvents() {
@@ -485,10 +576,11 @@ document.addEventListener("DOMContentLoaded", () => {
      ========================================== */
   selectAllCheckbox.addEventListener("change", (e) => {
     if (!currentPlaylist) return;
+    const visible = getVisibleTracks();
     if (e.target.checked) {
-      selectedSongIds = new Set(currentPlaylist.tracks.map((t) => t.id));
+      visible.forEach((t) => selectedSongIds.add(t.id));
     } else {
-      selectedSongIds.clear();
+      visible.forEach((t) => selectedSongIds.delete(t.id));
     }
     document.querySelectorAll(".track-checkbox").forEach((cb) => {
       cb.checked = e.target.checked;
@@ -501,14 +593,17 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedCountLabel.textContent = count;
     selectedBadge.textContent = `${count} seçili`;
     btnDownloadAll.disabled = count === 0;
-    if (currentPlaylist) {
-      selectAllCheckbox.checked = count === currentPlaylist.tracks.length;
+
+    const visible = getVisibleTracks();
+    if (visible.length > 0) {
+      const allVisibleSelected = visible.every((t) => selectedSongIds.has(t.id));
+      selectAllCheckbox.checked = allVisibleSelected;
     }
   }
 
   trackFilterInput.addEventListener("input", () => {
     if (currentPlaylist) {
-      renderTracksTable(currentPlaylist.tracks);
+      renderTracksTable();
     }
   });
 
@@ -532,6 +627,39 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("İndirme başlatılamadı.", "error");
     }
   }
+
+  btnDownloadActiveBatch.addEventListener("click", async () => {
+    if (!currentPlaylist) return;
+    const batchTracks = currentPlaylist.tracks.filter(
+      (t) => activeBatchIndex === 0 || t.batch_index === activeBatchIndex
+    );
+    const toDownload = batchTracks.filter((t) => selectedSongIds.has(t.id));
+
+    if (toDownload.length === 0) {
+      showToast("Bu bölümde seçili şarkı yok.", "error");
+      return;
+    }
+
+    showToast(`Bölümdeki ${toDownload.length} şarkı indirme kuyruğuna alındı.`, "success");
+    btnCancelAll.classList.remove("hidden");
+
+    try {
+      const res = await fetch("/api/download/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ songs: toDownload }),
+      });
+      const data = await res.json();
+      if (res.ok && data.tasks) {
+        data.tasks.forEach((t) => {
+          currentTasks[t.id] = t;
+          updateTrackRow(t);
+        });
+      }
+    } catch (e) {
+      showToast("Bölüm indirmesi başlatılamadı.", "error");
+    }
+  });
 
   btnDownloadAll.addEventListener("click", async () => {
     if (!currentPlaylist || selectedSongIds.size === 0) return;
@@ -600,7 +728,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ==========================================
      8. FLOATING AUDIO PLAYER
-     ========================================== */
+     ========================================= */
   function playAudioPreview(song, task) {
     let audioSrc = "";
     if (task && task.status === "completed" && task.file_path) {
