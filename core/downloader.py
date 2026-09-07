@@ -191,6 +191,19 @@ class Downloader:
                 task.eta = ""
                 self._notify(task)
 
+        # Find ffmpeg binary if available
+        ffmpeg_bin = shutil.which("ffmpeg")
+        if not ffmpeg_bin:
+            for candidate in [
+                Path.home() / ".local" / "bin" / "ffmpeg",
+                Path.home() / ".local" / "share" / "ffmpeg" / "ffmpeg",
+                Path("/usr/bin/ffmpeg"),
+                Path("/usr/local/bin/ffmpeg"),
+            ]:
+                if candidate.exists() and os.access(candidate, os.X_OK):
+                    ffmpeg_bin = str(candidate)
+                    break
+
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": temp_out_tmpl,
@@ -207,6 +220,8 @@ class Downloader:
             "noplaylist": True,
             "default_search": "ytsearch",
         }
+        if ffmpeg_bin:
+            ydl_opts["ffmpeg_location"] = ffmpeg_bin
 
         search_query = f"ytsearch1:{song.artist} - {song.title} audio"
 

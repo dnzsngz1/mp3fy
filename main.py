@@ -1,29 +1,61 @@
 #!/usr/bin/env python3
 """
-MP3fy - Spotify to MP3 Downloader & Converter
-Entry point for CLI and Web Application.
+MP3fy - Spotify to MP3 Downloader & ID3 Tagging CLI Tool for Linux.
 """
 
 import os
 import sys
 import time
+import signal
 import argparse
-import webbrowser
-import threading
 from pathlib import Path
+from typing import Optional, List
 
-# Add project root to sys.path
+# Ensure ~/.local/bin and project paths are in PATH and sys.path
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from core.spotify import SpotifyFetcher
+local_bin = str(Path.home() / ".local" / "bin")
+local_ffmpeg = str(Path.home() / ".local" / "share" / "ffmpeg")
+current_path = os.environ.get("PATH", "")
+for p in [local_bin, local_ffmpeg]:
+    if p not in current_path.split(os.path.pathsep) and Path(p).exists():
+        current_path = p + os.path.pathsep + current_path
+os.environ["PATH"] = current_path
+
+from core.spotify import SpotifyFetcher, PlaylistMetadata, SongMetadata, parse_spotify_url
 from core.downloader import Downloader, DownloadTask
 from core.utils import ensure_directory, get_default_music_dir
 
+VERSION = "1.1.0"
 
-def print_banner():
-    banner = r"""
+# Attempt importing Rich for enhanced terminal UX
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.progress import (
+        Progress,
+        SpinnerColumn,
+        BarColumn,
+        TextColumn,
+        TaskProgressColumn,
+        TimeRemainingColumn,
+        DownloadColumn,
+        TransferSpeedColumn,
+    )
+    from rich.prompt import Prompt, Confirm
+    from rich.text import Text
+    from rich import print as rprint
+    HAS_RICH = True
+    console = Console()
+except ImportError:
+    HAS_RICH = False
+    console = None
+
+
+BANNER_TEXT = r"""
   __  __ _____ ____   __       
  |  \/  |  __ \___ \ / _|      
  | \  / | |__) |__) | |_ _   _ 
@@ -32,121 +64,452 @@ def print_banner():
  |_|  |_|_|   |____/|_|  \__, |
                           __/ |
                          |___/ 
- Spotify to MP3 Downloader & Tagging Tool v1.0
- ---------------------------------------------
+ Spotify to MP3 Downloader & Tagging Tool (Linux CLI)
 """
-    print(banner)
 
 
-def run_cli_download(url: str, output_dir: Path, bitrate: str, max_workers: int):
-    print_banner()
-    print(f"[*] Spotify bağlantısı çözümleniyor: {url}")
-    fetcher = SpotifyFetcher()
-    try:
-        data = fetcher.fetch(url)
-    except Exception as e:
-        print(f"[!] Hata: Spotify bilgisi alınamadı - {e}")
-        sys.exit(1)
+def show_banner():
+    if HAS_RICH:
+        banner_panel = Panel(
+            Text(BANNER_TEXT, style="bold cyan"),
+            subtitle=f"[bold green]v{VERSION} | Linux CLI Edition[/bold green]",
+            border_style="bright_blue",
+        )
+        console.print(banner_panel)
+    else:
+        print(BANNER_TEXT)
+        print(f" v{VERSION} - Linux CLI Edition\n" + "-" * 50)
 
-    print(f"[+] Başlık: {data.title}")
-    print(f"[+] Sanatçı/Sahip: {data.owner}")
-    print(f"[+] Tür: {data.type.upper()}")
-    print(f"[+] Toplam Şarkı: {len(data.tracks)}")
-    print(f"[+] Hedef Klasör: {output_dir}")
-    print(f"[+] Ses Kalitesi: {bitrate} kbps")
-    print("-" * 50)
 
+def check_dependencies():
+    """Verify that ffmpeg is available in the system."""
+    import shutil
+    if not shutil.which("ffmpeg"):
+        msg = (
+            "[bold red][!] Uyarı: 'ffmpeg' komutu bulunamadı![/bold red]\n"
+            "MP3 dönüştürme ve ses işleme için ffmpeg gereklidir.\n"
+            "Yüklemek için terminalde şunu çalıştırabilirsiniz:\n"
+            "  [yellow]sudo apt install ffmpeg[/yellow] (Ubuntu/Debian/Mint)\n"
+            "veya MP3fy otomatik kurucusu aracılığıyla ekleyin."
+        ) if HAS_RICH else (
+            "[!] Uyarı: 'ffmpeg' komutu bulunamadı!\n"
+            "MP3 dönüştürme için ffmpeg gereklidir.\n"
+            "Yüklemek için: sudo apt install ffmpeg"
+        )
+        if HAS_RICH:
+            console.print(Panel(msg, title="[bold yellow]Bağımlılık Uyarısı[/bold yellow]", border_style="yellow"))
+        else:
+            print(msg)
+
+
+def format_size(size_mb: Optional[float]) -> str:
+    if size_mb is None:
+        return "0.0 MB"
+    return f"{size_mb:.1f} MB"
+
+
+def execute_download(
+    data: PlaylistMetadata,
+    tracks_to_download: List[SongMetadata],
+    output_dir: Path,
+    bitrate: str,
+    max_workers: int,
+):
+    """Executes the download queue with live terminal progress."""
+    ensure_directory(output_dir)
+    total_tracks = len(tracks_to_download)
     completed_count = 0
-    total_count = len(data.tracks)
+    failed_count = 0
+    start_time = time.time()
 
-    def on_progress(task: DownloadTask):
-        nonlocal completed_count
-        if task.status == "downloading":
-            print(
-                f"\r[-] [{task.song.title[:30]}] İndiriliyor: %{task.progress:.0f} {task.speed} {task.eta}   ",
-                end="",
-                flush=True,
+    if HAS_RICH:
+        # Summary table before starting
+        summary_table = Table(title="🎵 İndirme Detayları", border_style="cyan", show_header=False)
+        summary_table.add_column("Özellik", style="bold yellow")
+        summary_table.add_column("Değer", style="white")
+
+        summary_table.add_row("Başlık", data.title)
+        summary_table.add_row("Sanatçı / Sahip", data.owner or "Bilinmiyor")
+        summary_table.add_row("Tür", data.type.upper())
+        summary_table.add_row("İndirilecek Şarkı", f"{total_tracks} adet")
+        summary_table.add_row("Hedef Klasör", str(output_dir))
+        summary_table.add_row("Ses Kalitesi", f"{bitrate} kbps")
+        summary_table.add_row("Eşzamanlı İşlem", str(max_workers))
+        console.print(summary_table)
+        console.print()
+    else:
+        print(f"[*] Başlık: {data.title}")
+        print(f"[*] Tür: {data.type.upper()} ({total_tracks} şarkı)")
+        print(f"[*] Hedef: {output_dir} | Kalite: {bitrate} kbps | Eşzamanlı: {max_workers}")
+        print("-" * 60)
+
+    # Active downloader instance
+    active_downloader: Optional[Downloader] = None
+
+    def signal_handler(sig, frame):
+        if HAS_RICH:
+            console.print("\n[bold red][!] İşlem kullanıcı tarafından durduruldu (Ctrl+C). İptal ediliyor...[/bold red]")
+        else:
+            print("\n[!] İşlem durduruldu (Ctrl+C). İptal ediliyor...")
+        if active_downloader:
+            active_downloader.cancel_all()
+        sys.exit(130)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    if HAS_RICH:
+        overall_progress = Progress(
+            SpinnerColumn(spinner_name="dots"),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(bar_width=40),
+            TaskProgressColumn(),
+            TextColumn("•"),
+            TimeRemainingColumn(),
+            console=console,
+        )
+
+        with overall_progress:
+            overall_task = overall_progress.add_task(
+                f"[bold green]İndiriliyor: 0/{total_tracks}", total=total_tracks
             )
-        elif task.status == "converting":
-            print(f"\r[-] [{task.song.title[:30]}] MP3 Dönüştürülüyor...               ", end="", flush=True)
-        elif task.status == "tagging":
-            print(f"\r[-] [{task.song.title[:30]}] Albüm Kapağı & ID3 Etiketleniyor... ", end="", flush=True)
-        elif task.status == "completed":
-            completed_count += 1
-            print(f"\r[✓] ({completed_count}/{total_count}) {task.song.title} - Tamamlandı! ({task.file_size_mb:.1f} MB)\n")
-        elif task.status == "error":
-            print(f"\r[✗] [{task.song.title}] Hata: {task.error_message}\n")
 
-    downloader = Downloader(
-        output_dir=output_dir,
-        bitrate=bitrate,
-        max_workers=max_workers,
-        on_progress=on_progress,
-    )
+            # Dictionary to track task progress
+            def on_progress_rich(task: DownloadTask):
+                nonlocal completed_count, failed_count
+                title_clean = task.song.title[:35]
+                artist_clean = task.song.artist[:25]
+                label = f"{artist_clean} - {title_clean}"
 
-    tasks = downloader.download_playlist(data.tracks)
+                if task.status == "completed":
+                    completed_count += 1
+                    overall_progress.update(
+                        overall_task,
+                        completed=completed_count + failed_count,
+                        description=f"[bold green]Tamamlandı: {completed_count}/{total_tracks} ({task.file_size_mb or 0:.1f} MB)",
+                    )
+                    console.print(f" [bold green]✓[/bold green] [white]{label}[/white] - [green]Tamamlandı ({task.file_size_mb or 0:.1f} MB)[/green]")
+                elif task.status == "error":
+                    failed_count += 1
+                    overall_progress.update(
+                        overall_task,
+                        completed=completed_count + failed_count,
+                    )
+                    console.print(f" [bold red]✗[/bold red] [white]{label}[/white] - [red]Hata: {task.error_message}[/red]")
 
-    # Wait for all tasks to complete
+            active_downloader = Downloader(
+                output_dir=output_dir,
+                bitrate=bitrate,
+                max_workers=max_workers,
+                on_progress=on_progress_rich,
+            )
+
+            tasks = active_downloader.download_playlist(tracks_to_download)
+
+            # Wait for all tasks
+            while True:
+                all_done = all(t.status in ["completed", "error", "cancelled"] for t in tasks)
+                if all_done:
+                    break
+                time.sleep(0.3)
+
+    else:
+        def on_progress_simple(task: DownloadTask):
+            nonlocal completed_count, failed_count
+            if task.status == "completed":
+                completed_count += 1
+                print(f"[✓] ({completed_count}/{total_tracks}) {task.song.artist} - {task.song.title} ({task.file_size_mb or 0:.1f} MB)")
+            elif task.status == "error":
+                failed_count += 1
+                print(f"[✗] {task.song.title} - Hata: {task.error_message}")
+            elif task.status == "downloading":
+                print(f"\r[-] İndiriliyor: %{task.progress:.0f} {task.speed} {task.eta}   ", end="", flush=True)
+
+        active_downloader = Downloader(
+            output_dir=output_dir,
+            bitrate=bitrate,
+            max_workers=max_workers,
+            on_progress=on_progress_simple,
+        )
+
+        tasks = active_downloader.download_playlist(tracks_to_download)
+        while True:
+            all_done = all(t.status in ["completed", "error", "cancelled"] for t in tasks)
+            if all_done:
+                break
+            time.sleep(0.4)
+
+    duration = time.time() - start_time
+    duration_str = f"{int(duration // 60)}d {int(duration % 60)}s"
+
+    if HAS_RICH:
+        console.print()
+        results_panel = Panel(
+            Text.from_markup(
+                f"[bold green]✔ İndirme işlemi tamamlandı![/bold green]\n\n"
+                f"• Başarılı: [bold green]{completed_count}[/bold green] / {total_tracks}\n"
+                f"• Hatalı: [bold red]{failed_count}[/bold red]\n"
+                f"• Toplam Süre: [bold cyan]{duration_str}[/bold cyan]\n"
+                f"• Kayıt Konumu: [bold white]{output_dir}[/bold white]"
+            ),
+            title="[bold green]İşlem Sonucu[/bold green]",
+            border_style="green" if failed_count == 0 else "yellow",
+        )
+        console.print(results_panel)
+    else:
+        print("\n" + "=" * 60)
+        print(f"[★] Tamamlandı! {completed_count}/{total_tracks} şarkı kaydedildi.")
+        print(f"[*] Kayıt konumu: {output_dir}")
+        print(f"[*] Toplam süre: {duration_str}")
+        print("=" * 60)
+
+
+def interactive_mode():
+    """Interactive command-line wizard."""
+    show_banner()
+    check_dependencies()
+
+    default_out = str(get_default_music_dir())
+
     while True:
-        all_done = all(t.status in ["completed", "error", "cancelled"] for t in tasks)
-        if all_done:
-            break
-        time.sleep(0.5)
+        try:
+            if HAS_RICH:
+                url_prompt = Prompt.ask("\n[bold cyan]🎵 Spotify URL girin[/bold cyan] (veya çıkış için [bold red]q[/bold red])").strip()
+            else:
+                url_prompt = input("\n🎵 Spotify URL girin (veya çıkış için q): ").strip()
 
-    print("-" * 50)
-    print(f"[★] İndirme işlemi tamamlandı! {completed_count}/{total_count} şarkı '{output_dir}' klasörüne kaydedildi.")
+            if not url_prompt:
+                continue
+            if url_prompt.lower() in ["q", "quit", "exit", "cikis", "çıkış"]:
+                if HAS_RICH:
+                    console.print("[yellow]MP3fy sonlandırıldı. İyi günler![/yellow]")
+                else:
+                    print("MP3fy sonlandırıldı. İyi günler!")
+                sys.exit(0)
 
+            # Validate URL
+            spotify_type, spotify_id = parse_spotify_url(url_prompt)
+            if not spotify_type or not spotify_id:
+                msg = "[bold red][!] Geçersiz Spotify bağlantısı![/bold red] Lütfen geçerli bir playlist, album veya şarkı linki girin."
+                if HAS_RICH:
+                    console.print(msg)
+                else:
+                    print("[!] Geçersiz Spotify bağlantısı!")
+                continue
 
-def run_web(host: str, port: int, open_browser: bool):
-    print_banner()
-    url = f"http://{host}:{port}"
-    print(f"[*] Web arayüzü başlatılıyor: {url}")
-    print(f"[*] Siyah/Beyaz tema desteği ve canlı ilerleme paneli aktif.")
-    print(f"[*] Durdurmak için Ctrl+C tuşlarına basın.\n")
+            # Fetch metadata
+            if HAS_RICH:
+                with console.status("[bold cyan]Spotify bilgileri taranıyor...[/bold cyan]", spinner="bouncingBar"):
+                    fetcher = SpotifyFetcher()
+                    data = fetcher.fetch(url_prompt)
+            else:
+                print("[*] Spotify bilgileri taranıyor...")
+                fetcher = SpotifyFetcher()
+                data = fetcher.fetch(url_prompt)
 
-    if open_browser:
-        def _open():
-            time.sleep(1.2)
+            if not data or not data.tracks:
+                if HAS_RICH:
+                    console.print("[bold red][!] Müzik bilgisi alınamadı veya liste boş.[/bold red]")
+                else:
+                    print("[!] Müzik bilgisi alınamadı veya liste boş.")
+                continue
+
+            # Display info
+            if HAS_RICH:
+                info_table = Table(border_style="blue", show_header=False)
+                info_table.add_column("Alan", style="bold cyan")
+                info_table.add_column("Detay", style="white")
+                info_table.add_row("Tür", data.type.upper())
+                info_table.add_row("Başlık", data.title)
+                info_table.add_row("Sanatçı / Sahip", data.owner or "Belirtilmemiş")
+                info_table.add_row("Şarkı Sayısı", str(len(data.tracks)))
+                console.print(Panel(info_table, title="[bold green]Bağlantı Bilgisi[/bold green]"))
+            else:
+                print(f"[+] Başlık: {data.title} | Tür: {data.type.upper()} | Toplam: {len(data.tracks)} şarkı")
+
+            tracks_to_download = data.tracks
+
+            # Batch selection for playlists > 100 tracks
+            if len(data.batches) > 1:
+                if HAS_RICH:
+                    console.print(f"\n[bold yellow]Bu liste {len(data.tracks)} şarkı içermektedir ve {len(data.batches)} bölüme ayrılmıştır:[/bold yellow]")
+                    batch_table = Table(show_header=True, header_style="bold magenta")
+                    batch_table.add_column("Bölüm", style="cyan")
+                    batch_table.add_column("Aralık", style="green")
+                    batch_table.add_column("Şarkı Sayısı", style="white")
+                    for b in data.batches:
+                        batch_table.add_row(f"Bölüm {b.batch_index}", f"{b.start_index} - {b.end_index}", str(b.count))
+                    console.print(batch_table)
+
+                    choice = Prompt.ask(
+                        "İndirmek istediğiniz bölüm ([bold green]T[/bold green]=Tümü, veya bölüm no örn: 1, 2)",
+                        default="T",
+                    ).strip()
+                else:
+                    print(f"\nBu liste {len(data.tracks)} şarkı içermektedir ({len(data.batches)} bölüm).")
+                    for b in data.batches:
+                        print(f"  - Bölüm {b.batch_index}: {b.start_index}-{b.end_index} ({b.count} şarkı)")
+                    choice = input("Bölüm seçin (T=Tümü, veya 1, 2...): [T] ").strip() or "T"
+
+                if choice.upper() != "T":
+                    try:
+                        b_idx = int(choice)
+                        selected_tracks = [t for t in data.tracks if getattr(t, "batch_index", 1) == b_idx]
+                        if selected_tracks:
+                            tracks_to_download = selected_tracks
+                            if HAS_RICH:
+                                console.print(f"[green]✓ Yalnızca Bölüm {b_idx} ({len(tracks_to_download)} şarkı) indirilecek.[/green]")
+                            else:
+                                print(f"Yalnızca Bölüm {b_idx} indirilecek.")
+                    except ValueError:
+                        pass
+
+            # Folder selection
+            if HAS_RICH:
+                out_str = Prompt.ask("Hedef klasör", default=default_out).strip()
+            else:
+                out_input = input(f"Hedef klasör [{default_out}]: ").strip()
+                out_str = out_input if out_input else default_out
+            output_dir = Path(out_str).resolve()
+
+            # Bitrate selection
+            if HAS_RICH:
+                bitrate = Prompt.ask(
+                    "Ses Kalitesi (kbps)",
+                    choices=["128", "192", "256", "320"],
+                    default="320",
+                )
+            else:
+                bit_input = input("Ses Kalitesi (128, 192, 256, 320) [320]: ").strip()
+                bitrate = bit_input if bit_input in ["128", "192", "256", "320"] else "320"
+
+            # Workers selection
+            if HAS_RICH:
+                workers_str = Prompt.ask("Eşzamanlı indirme sayısı", default="2")
+            else:
+                w_input = input("Eşzamanlı indirme sayısı [2]: ").strip()
+                workers_str = w_input if w_input else "2"
             try:
-                webbrowser.open(url)
-            except Exception:
-                pass
+                workers = max(1, min(8, int(workers_str)))
+            except ValueError:
+                workers = 2
 
-        threading.Thread(target=_open, daemon=True).start()
+            # Execute
+            execute_download(data, tracks_to_download, output_dir, bitrate, workers)
 
-    import uvicorn
-    from app import app
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+        except (KeyboardInterrupt, EOFError):
+            if HAS_RICH:
+                console.print("\n[yellow]Çıkış yapılıyor...[/yellow]")
+            else:
+                print("\nÇıkış yapılıyor...")
+            sys.exit(0)
+        except Exception as e:
+            if HAS_RICH:
+                console.print(f"[bold red][!] Hata oluştu: {e}[/bold red]")
+            else:
+                print(f"[!] Hata oluştu: {e}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MP3fy - Spotify Playlist/Album/Track to MP3 Converter with ID3 Metadata & Album Art."
+        prog="mp3fy",
+        description="MP3fy - Spotify Playlist/Album/Track to MP3 Converter with ID3 Metadata & Album Art (Linux CLI).",
     )
-    parser.add_argument("url", nargs="?", help="Spotify playlist, album veya şarkı linki (CLI modu için)")
-    parser.add_argument("--web", action="store_true", help="Web arayüzünü zorla başlat")
-    parser.add_argument("--host", default="127.0.0.1", help="Web sunucu adresi (Varsayılan: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8888, help="Web sunucu portu (Varsayılan: 8888)")
-    parser.add_argument("--no-browser", action="store_true", help="Tarayıcıyı otomatik açma")
+    parser.add_argument(
+        "url",
+        nargs="?",
+        default=None,
+        help="Spotify çalma listesi, albüm veya parça bağlantısı. Belirtilmezse etkileşimli mod açılır.",
+    )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Etkileşimli terminal sihirbazını başlat",
+    )
     parser.add_argument(
         "-o",
         "--output",
         default=None,
-        help="İndirilen MP3 dosyalarının kaydedileceği klasör (Varsayılan: Ev dizini ~/Music)",
+        help="İndirilen MP3 dosyalarının kaydedileceği hedef klasör (Varsayılan: ~/Music)",
     )
-    parser.add_argument("-b", "--bitrate", default="320", choices=["128", "192", "256", "320"], help="MP3 Bitrate (Varsayılan: 320)")
-    parser.add_argument("-w", "--workers", type=int, default=2, help="Eşzamanlı indirme sayısı (Varsayılan: 2)")
+    parser.add_argument(
+        "-b",
+        "--bitrate",
+        default="320",
+        choices=["128", "192", "256", "320"],
+        help="MP3 ses kalitesi (kbps) (Varsayılan: 320)",
+    )
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        default=2,
+        help="Eşzamanlı indirme iş parçacığı sayısı (Varsayılan: 2)",
+    )
+    parser.add_argument(
+        "--batch",
+        type=int,
+        default=None,
+        help="100+ şarkılık listelerde sadece belirtilen bölümü indir (örneğin 1, 2)",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"MP3fy v{VERSION}",
+        help="Sürüm bilgisini göster",
+    )
 
     args = parser.parse_args()
 
-    # If URL is provided and not in web mode, run CLI
-    if args.url and not args.web:
-        out_path = Path(args.output).resolve() if args.output else get_default_music_dir()
-        ensure_directory(out_path)
-        run_cli_download(args.url, out_path, args.bitrate, args.workers)
+    # If no URL is provided or explicitly requested interactive, launch interactive mode
+    if not args.url or args.interactive:
+        interactive_mode()
+        return
+
+    # Direct CLI execution
+    show_banner()
+    check_dependencies()
+
+    out_path = Path(args.output).resolve() if args.output else get_default_music_dir()
+    ensure_directory(out_path)
+
+    if HAS_RICH:
+        console.print(f"[*] Spotify bağlantısı çözümleniyor: [bold cyan]{args.url}[/bold cyan]")
+        with console.status("[bold cyan]Spotify verileri alınıyor...[/bold cyan]", spinner="dots"):
+            fetcher = SpotifyFetcher()
+            try:
+                data = fetcher.fetch(args.url)
+            except Exception as e:
+                console.print(f"[bold red][!] Hata: Spotify bilgisi alınamadı - {e}[/bold red]")
+                sys.exit(1)
     else:
-        # Launch Web UI
-        run_web(args.host, args.port, not args.no_browser)
+        print(f"[*] Spotify bağlantısı çözümleniyor: {args.url}")
+        fetcher = SpotifyFetcher()
+        try:
+            data = fetcher.fetch(args.url)
+        except Exception as e:
+            print(f"[!] Hata: Spotify bilgisi alınamadı - {e}")
+            sys.exit(1)
+
+    tracks = data.tracks
+    if args.batch:
+        tracks = [t for t in tracks if getattr(t, "batch_index", 1) == args.batch]
+        if not tracks:
+            msg = f"[!] Belirtilen bölüm ({args.batch}) bulunamadı. Toplam bölüm sayısı: {len(data.batches)}"
+            if HAS_RICH:
+                console.print(f"[bold red]{msg}[/bold red]")
+            else:
+                print(msg)
+            sys.exit(1)
+
+    execute_download(
+        data=data,
+        tracks_to_download=tracks,
+        output_dir=out_path,
+        bitrate=args.bitrate,
+        max_workers=max(1, min(8, args.workers)),
+    )
 
 
 if __name__ == "__main__":

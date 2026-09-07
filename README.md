@@ -1,17 +1,15 @@
-# 🎵 MP3fy - Spotify to MP3 Converter & Downloader
+# 🎵 MP3fy - Spotify to MP3 Linux CLI Tool
 
 <div align="center">
 
-<img src="web/static/img/logo.jpg" alt="MP3fy Logo" width="120" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" />
+### MP3fy (Linux CLI Edition)
 
-### MP3fy
+![Python Version](https://img.shields.io/badge/python-3.9%2B-blue?style=for-the-badge&logo=python)
+![Platform](https://img.shields.io/badge/platform-Linux-green?style=for-the-badge&logo=linux)
+![CLI](https://img.shields.io/badge/interface-Terminal%20CLI-black?style=for-the-badge)
 
-![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=for-the-badge)
-
-**Spotify Çalma Listesi, Albüm ve Şarkı bağlantılarından yüksek kaliteli MP3 (320kbps) dönüştürücü ve ID3 etiketleyici.**  
-*Convert and download Spotify playlists, albums, and tracks to 320kbps MP3 files with full ID3 metadata and album art.*
+**Spotify Çalma Listesi, Albüm ve Şarkı bağlantılarından yüksek kaliteli MP3 (320kbps) dönüştürücü ve ID3 etiketleyici Linux Terminal Aracı.**  
+*Convert and download Spotify playlists, albums, and tracks to 320kbps MP3 files with full ID3 metadata and album art directly from your Linux terminal.*
 
 ---
 
@@ -24,72 +22,91 @@
 
 ## ✨ Temel Özellikler / Key Features
 
-- 🎧 **Spotify'dan Kolay İndirme / Easy Spotify Downloading:** Çalma listesi (Playlist), Albüm (Album) veya Tekil Şarkı (Track) bağlantılarını sıfır yapılandırmayla anında indirin.
-- 📦 **100'lük Bölümleme (Batching / Pagination):** 100, 200, 500+ şarkılık devasa listeleri 100'erli bölümlere ayırır; ister tek tek bölümler halinde (`Bölüm 1`, `Bölüm 2`), ister tek tıkla tümünü indirin.
-- 📁 **Özel İndirme Klasörü Seçimi / Custom Folder Selection:** Şarkıların nereye kaydedileceğini siz belirlersiniz. İster sistem klasör seçicisiyle (Gözat), ister hızlı konumlarla (`Müzik`, `İndirilenler`, `Masaüstü`), ister özel disk yoluyla.
+- 🎧 **Doğrudan Terminal Komutu (`mp3fy`):** Kurulumdan sonra sistemdeki herhangi bir dizinde doğrudan `mp3fy` yazarak çalıştırabilirsiniz.
+- 🧙‍♂️ **Etkileşimli Terminal Sihirbazı:** Argüman girmeden `mp3fy` yazıldığında renkli ve kullanımı kolay bir arayüzle Spotify bağlantısı, kalite, bölüm ve kayıt yeri sorar.
+- ⚡ **Parametreli Hızlı Kullanım:** `mp3fy <url> [seçenekler]` formatında tek satırda otomatik indirme.
+- 📦 **100'lük Bölümleme (Batching):** 100, 200, 500+ şarkılık büyük listeleri 100'erlik dilimlere ayırır; ister belirli bir bölümü, ister tümünü indirin.
 - 🏷️ **Eksiksiz ID3 Etiketleme / ID3v2.3 Tagging:** Orijinal yüksek çözünürlüklü kapak görseli (APIC), Sanatçı (TPE1), Albüm (TALB), Şarkı Adı (TIT2), Yıl (TDRC) ve Parça No (TRCK).
-- 🌓 **Siyah / Beyaz Cam Teması / Dark & Light Theme:** Modern koyu (Dark) ve açık (Light) cam panelli estetik tasarım.
-- 🌐 **Türkçe & İngilizce Desteği (TR / EN):** Tek tıkla iki dil arasında anında geçiş.
-- 🚀 **Canlı İlerleme / Real-time Progress:** WebSocket ile indirme yüzdesi, hız (MB/s), kalan süre ve dönüştürme durumları canlı izlenir.
-- 🔊 **Entegre Ses Önizleme / Audio Preview:** Şarkıları indirmeden önce veya indirdikten sonra arayüz üzerinden dinleyin.
+- 🚀 **Canlı İlerleme Çubuğu:** Rich kütüphanesi destekli canlı indirme hızı (MB/s), kalan süre ve şarkı durum bildirimleri.
+- 📁 **Özel İndirme Klasörü:** Varsayılan olarak `~/Music` dizinine kaydeder veya `-o` ile dilediğiniz hedef klasörü belirleyebilirsiniz.
 - ⚙️ **Özelleştirilebilir Kalite (Bitrate):** 320 kbps (Stüdyo Kalitesi), 256 kbps, 192 kbps veya 128 kbps seçenekleri.
-- 💻 **Hem Web Arayüzü Hem CLI:** İster modern tarayıcı arayüzüyle, ister terminalden tek komutla kullanın.
 
 ---
 
-## 🚀 Hızlı Başlangıç / Quick Start
+## 🚀 Hızlı Başlangıç & Kurulum / Quick Start
 
-### 1. Depoyu Klonlayın / Clone Repository
+### 1. Depoyu Klonlayın
 ```bash
 git clone https://github.com/kullaniciadi/mp3fy.git
 cd mp3fy
 ```
 
-### 2. Tek Tıkla Başlatma / Launch
-
-#### Linux / macOS:
+### 2. Tek Komutla Kurun (Installer)
 ```bash
-chmod +x run.sh
-./run.sh
+chmod +x install.sh
+./install.sh
 ```
+> Bu script sanal ortamı kurar, bağımlılıkları yükler ve `~/.local/bin/mp3fy` komutunu sisteme bağlar.
 
-#### Windows:
-`run.bat` dosyasına çift tıklayın veya komut satırından çalıştırın:
-```cmd
-run.bat
+### 3. Çalıştırın
+Terminalde herhangi bir konumdayken:
+```bash
+mp3fy
 ```
-
-> Başlatıcı script sanal ortamı (`.venv`) kurar, bağımlılıkları yükler ve tarayıcınızda `http://localhost:8888` adresinde uygulamayı açar.
 
 ---
 
-## 🛠️ Sistem Gereksinimleri / Prerequisites
+## 💻 Kullanım / Usage
 
-1. **Python 3.10+**
-2. **FFmpeg:** MP3 dönüştürme ve ses işleme için gereklidir:
-   - **Ubuntu / Debian:** `sudo apt update && sudo apt install ffmpeg`
-   - **Arch Linux:** `sudo pacman -S ffmpeg`
-   - **macOS:** `brew install ffmpeg`
-   - **Windows:** `winget install Gyan.FFmpeg` veya [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) adresinden indirin.
-
----
-
-## 💻 CLI (Komut Satırı) Kullanımı / CLI Usage
-
+### 1. Etkileşimli Mod (Sihirbaz)
+Hiçbir parametre vermeden çalıştırıldığında etkileşimli mod açılır:
 ```bash
-# Çalma listesi indirme / Download playlist
-python main.py "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
+mp3fy
+```
+Sizden Spotify linkini alır, çalma listesi/şarkı detaylarını listeler ve onayınızı alarak indirmeyi başlatır.
+
+### 2. Komut Satırı Parametreleri (Direct CLI)
+```bash
+# Çalma listesi indirme
+mp3fy "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
 
 # Belirli bir klasöre ve 320kbps kalitede indirme
-python main.py "https://open.spotify.com/track/4LfCY65LvojKjWEnU7fNN4" --output ~/Music --bitrate 320
+mp3fy "https://open.spotify.com/track/4LfCY65LvojKjWEnU7fNN4" -o ~/Music -b 320
 
 # Eşzamanlı 3 iş parçacığı ile indirme
-python main.py "https://open.spotify.com/album/4m2880jivSbbyEGAKfITCa" --workers 3
+mp3fy "https://open.spotify.com/album/4m2880jivSbbyEGAKfITCa" -w 3
+
+# Büyük çalma listelerinde sadece 2. bölümü (101-200) indirme
+mp3fy "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M" --batch 2
 ```
+
+### Parametreler
+| Parametre | Açıklama | Varsayılan |
+| :--- | :--- | :--- |
+| `url` | Spotify Çalma Listesi, Albüm veya Şarkı bağlantısı | `None` (Etkileşimli mod) |
+| `-i`, `--interactive` | Etkileşimli modu zorunlu kıl | `False` |
+| `-o`, `--output` | İndirilen MP3'lerin kaydedileceği klasör | `~/Music` |
+| `-b`, `--bitrate` | MP3 kalitesi (`128`, `192`, `256`, `320`) | `320` |
+| `-w`, `--workers` | Eşzamanlı iş parçacığı sayısı (1 - 8) | `2` |
+| `--batch` | 100+ şarkılık listelerde sadece belirtilen bölümü indir | `Tümü` |
+| `-v`, `--version` | Sürüm bilgisini göster | - |
+| `-h`, `--help` | Yardım menüsünü göster | - |
 
 ---
 
-## 📁 Proje Yapısı / Project Structure
+## 🛠️ Sistem Gereksinimleri
+
+1. **Linux İşletim Sistemi** (Ubuntu, Debian, Linux Mint, Arch, Fedora vb.)
+2. **Python 3.9+**
+3. **FFmpeg:** MP3 dönüştürme için gereklidir:
+   ```bash
+   sudo apt update && sudo apt install ffmpeg
+   ```
+   *(Sisteminizde FFmpeg yoksa MP3fy yerel ikili dosyayı da otomatik olarak kullanabilir).*
+
+---
+
+## 📁 Proje Yapısı
 
 ```
 mp3fy/
@@ -98,24 +115,15 @@ mp3fy/
 │   ├── spotify.py          # Spotify URL ayrıştırma, metadata ve 100'lük bölümleme
 │   ├── downloader.py       # yt-dlp ile ses indirme ve ffmpeg dönüştürme
 │   ├── tagger.py           # mutagen ile ID3 etiketleme ve kapak görseli gömme
-│   └── utils.py            # Klasör seçici, ev dizini tespiti ve dosya adı temizleme
-├── web/
-│   ├── static/
-│   │   ├── css/            # Özel stiller
-│   │   ├── js/
-│   │   │   └── app.js      # Çok dilli (TR/EN) frontend controller, WebSocket & oynatıcı
-│   │   └── img/
-│   │       ├── logo.jpg    # Uygulama logosu
-│   │       └── placeholder.svg
-│   └── templates/
-│       └── index.html      # Glassmorphic arayüz, tema/dil düğmeleri, bölüm sekmeleri
+│   └── utils.py            # Dizin tespiti, temizleme ve yardımcı fonksiyonlar
 ├── tests/
-│   └── test_core.py        # Birim testleri
-├── app.py                  # FastAPI/Uvicorn ana uygulama ve WebSocket sunucusu
-├── main.py                 # CLI ve başlatıcı giriş noktası
-├── requirements.txt        # Python paket bağımlılıkları
-├── run.sh                  # Linux/macOS başlatıcı betik
-├── run.bat                 # Windows başlatıcı betik
+│   ├── test_core.py        # Çekirdek birim testleri
+│   └── test_cli.py         # CLI argüman ve komut testleri
+├── main.py                 # CLI ve etkileşimli terminal sihirbazı
+├── install.sh              # Otomatik Linux kurulum scripti (mp3fy komutunu oluşturur)
+├── run.sh                  # Hızlı başlatıcı script
+├── pyproject.toml          # Standart Python paket yapılandırması
+├── requirements.txt        # Bağımlılıklar (yt-dlp, mutagen, rich vb.)
 ├── KULLANIM_KILAVUZU.md    # Detaylı Türkçe kullanım kılavuzu
 ├── USER_GUIDE.md           # Detailed English user guide
 └── README.md               # Proje belgelendirmesi
@@ -123,9 +131,9 @@ mp3fy/
 
 ---
 
-## 🧪 Testleri Çalıştırma / Running Tests
+## 🧪 Testleri Çalıştırma
 
 ```bash
-source .venv/bin/activate
-python -m unittest discover tests
+./run.sh -v
+.venv/bin/python -m unittest discover tests
 ```
