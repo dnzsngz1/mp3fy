@@ -36,9 +36,13 @@ class TestUtils(unittest.TestCase):
 
     def test_get_default_music_dir(self):
         from core.utils import get_default_music_dir
-        music_dir = get_default_music_dir()
-        self.assertTrue(music_dir.exists())
-        self.assertTrue(music_dir.is_dir())
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as fake_home:
+            with patch("core.utils.Path.home", return_value=Path(fake_home)):
+                music_dir = get_default_music_dir()
+                self.assertTrue(music_dir.exists())
+                self.assertTrue(music_dir.is_dir())
+                self.assertEqual(music_dir, Path(fake_home) / "Music")
 
 
 class TestSpotifyParser(unittest.TestCase):
@@ -68,10 +72,10 @@ class TestID3Tagger(unittest.TestCase):
     def test_tagger_with_sample_mp3(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             sample_mp3 = Path(tmp_dir) / "test_track.mp3"
-            # Generate a 0.5-second silent MP3 using ffmpeg
-            ret = os.system(f'ffmpeg -f lavfi -i "sine=frequency=440:duration=0.5" -b:a 128k "{sample_mp3}" -y -loglevel quiet')
-            if ret != 0:
-                self.skipTest("ffmpeg not available or failed to generate test audio")
+            # Pure-Python valid MPEG-1 Layer 3 audio frames (128 kbps, 44.1 kHz)
+            frame_header = b"\xff\xfb\x90\x44"
+            frame_body = b"\x00" * 413
+            sample_mp3.write_bytes((frame_header + frame_body) * 5)
 
             success = apply_id3_tags(
                 mp3_path=sample_mp3,

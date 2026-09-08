@@ -40,6 +40,9 @@ class TestPowerShellScripts(unittest.TestCase):
         # Verify launcher generation and PATH configuration
         self.assertIn("mp3fy.cmd", content)
         self.assertIn("mp3fy.ps1", content)
+        self.assertIn("Set-Content -Path $UserCmd -Value $UserCmdContent -Encoding UTF8", content)
+        self.assertIn("Set-Content -Path $UserPs1 -Value $UserPs1Content -Encoding UTF8", content)
+        self.assertNotIn("-Encoding ASCII", content)
         self.assertIn("[Environment]::SetEnvironmentVariable", content)
         self.assertIn("PROFILE", content)
 
@@ -50,6 +53,9 @@ class TestPowerShellScripts(unittest.TestCase):
         self.assertIn("install.ps1", content)
         self.assertIn(".venv", content)
         self.assertIn("@args", content)
+        # Ensure install failure is checked and propagated
+        self.assertIn("$LASTEXITCODE", content)
+        self.assertIn("exit $LASTEXITCODE", content)
         # Ensure [CmdletBinding()] and param() are NOT present so arguments pass without ParameterBindingException
         self.assertNotIn("[CmdletBinding()]", content)
         self.assertNotIn("param()", content)
@@ -81,6 +87,7 @@ class TestPowerShellScripts(unittest.TestCase):
         content = self.run_bat.read_text(encoding="utf-8")
         self.assertIn("chcp 65001", content)
         self.assertIn("install.ps1", content)
+        self.assertIn("errorlevel 1 exit /b %ERRORLEVEL%", content)
         self.assertIn("main.py", content)
         self.assertIn("exit /b %ERRORLEVEL%", content)
 
@@ -90,6 +97,32 @@ class TestPowerShellScripts(unittest.TestCase):
         self.assertNotIn("[CmdletBinding()]\n    param()\n    & \"$VenvPython\"", content)
         # Verify WinGet Links check
         self.assertIn("WinGet\\Links\\ffmpeg.exe", content)
+
+    def test_run_sh_content_and_syntax(self):
+        run_sh = self.project_dir / "run.sh"
+        self.assertTrue(run_sh.exists(), "run.sh must exist")
+        content = run_sh.read_text(encoding="utf-8")
+        self.assertIn("install.sh", content)
+        self.assertIn('"$@"', content)
+        self.assertIn("$?", content)
+        self.assertIn("exit $EXIT_CODE", content)
+
+        # Verify bash syntax
+        import subprocess
+        result = subprocess.run(["bash", "-n", str(run_sh)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, f"bash -n run.sh failed: {result.stderr}")
+
+    def test_install_sh_content_and_syntax(self):
+        install_sh = self.project_dir / "install.sh"
+        self.assertTrue(install_sh.exists(), "install.sh must exist")
+        content = install_sh.read_text(encoding="utf-8")
+        self.assertIn("python3", content)
+        self.assertIn("3.9", content)
+
+        # Verify bash syntax
+        import subprocess
+        result = subprocess.run(["bash", "-n", str(install_sh)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, f"bash -n install.sh failed: {result.stderr}")
 
 
 if __name__ == "__main__":
