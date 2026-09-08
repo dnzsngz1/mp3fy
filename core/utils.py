@@ -143,14 +143,21 @@ def open_native_folder_picker(initial_dir: Optional[str | Path] = None) -> Optio
 
     elif sys_name == "Windows":
         try:
+            safe_init_path = init_path.replace("'", "''")
             ps_cmd = (
-                "[System.Reflection.Assembly]::LoadWithPartialName('System.windows.forms') | Out-Null;"
-                "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog;"
-                "$dialog.Description = 'MP3fy İndirme Klasörünü Seçin';"
-                f"$dialog.SelectedPath = '{init_path}';"
-                "if($dialog.ShowDialog() -eq 'OK'){ Write-Output $dialog.SelectedPath }"
+                "Add-Type -AssemblyName System.Windows.Forms; "
+                "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog; "
+                "$dialog.Description = 'MP3fy İndirme Klasörünü Seçin'; "
+                f"$dialog.SelectedPath = '{safe_init_path}'; "
+                "$dialog.ShowNewFolderButton = $true; "
+                "if($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){ Write-Output $dialog.SelectedPath }"
             )
-            res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=60)
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-STA", "-Command", ps_cmd],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
             if res.returncode == 0 and res.stdout.strip():
                 return res.stdout.strip()
         except Exception:

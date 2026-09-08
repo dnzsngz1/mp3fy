@@ -1,8 +1,6 @@
 # ==============================================================================
 # MP3fy - PowerShell CLI Hızlı Başlatıcı (Starter)
 # ==============================================================================
-[CmdletBinding()]
-param()
 
 $ProjectDir = $PSScriptRoot
 if (-not $ProjectDir) {
@@ -12,6 +10,7 @@ if (-not $ProjectDir) {
 # UTF-8 konsol kodlamasını etkinleştir
 try {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
 } catch {}
 
@@ -33,7 +32,10 @@ if (-not (Test-Path $VenvPython)) {
 if (Test-Path $VenvPython) {
     & $VenvPython $MainPy @args
     exit $LASTEXITCODE
+} elseif (Get-Command python -ErrorAction SilentlyContinue) {
+    & python $MainPy @args
+    exit $LASTEXITCODE
 } else {
-    Write-Host "[!] Hata: .venv\Scripts\python.exe bulunamadı." -ForegroundColor Red
+    Write-Host "[!] Hata: .venv\Scripts\python.exe veya Python bulunamadı." -ForegroundColor Red
     exit 1
 }

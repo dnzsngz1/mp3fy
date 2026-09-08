@@ -25,10 +25,15 @@ if sys.platform == "win32":
     try:
         import ctypes
         kernel32 = ctypes.windll.kernel32
-        hOut = kernel32.GetStdHandle(-11)
-        mode = ctypes.c_ulong()
-        if kernel32.GetConsoleMode(hOut, ctypes.byref(mode)):
-            kernel32.SetConsoleMode(hOut, mode.value | 0x0004)
+        # Enable VT100 / ANSI virtual terminal processing on stdout (-11) and stderr (-12)
+        for handle_id in (-11, -12):
+            h = kernel32.GetStdHandle(handle_id)
+            mode = ctypes.c_ulong()
+            if kernel32.GetConsoleMode(h, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(h, mode.value | 0x0004)
+        # Ensure console code page is UTF-8 (65001)
+        kernel32.SetConsoleOutputCP(65001)
+        kernel32.SetConsoleCP(65001)
     except Exception:
         pass
 
@@ -45,8 +50,12 @@ local_bins = [
     str(BASE_DIR / ".venv" / "Scripts"),
 ]
 if sys.platform == "win32":
+    local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
     local_bins.extend([
         r"C:\ffmpeg\bin",
+        os.path.join(program_files, "ffmpeg", "bin"),
+        os.path.join(local_app_data, "Microsoft", "WinGet", "Links"),
         str(Path.home() / "scoop" / "shims"),
         str(Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin"),
         str(Path.home() / "AppData" / "Local" / "ffmpeg" / "bin"),
@@ -62,7 +71,7 @@ os.environ["PATH"] = current_path
 
 from core.spotify import SpotifyFetcher, PlaylistMetadata, SongMetadata, parse_spotify_url
 from core.downloader import Downloader, DownloadTask
-from core.utils import ensure_directory, get_default_music_dir
+from core.utils import ensure_directory, get_default_music_dir, open_native_folder_picker
 
 VERSION = "1.2.0"
 
@@ -421,10 +430,20 @@ def interactive_mode():
 
             # Folder selection
             if HAS_RICH:
-                out_str = Prompt.ask("Hedef klasör", default=default_out).strip()
+                out_str = Prompt.ask("Hedef klasör (veya seçici için 'b')", default=default_out).strip()
             else:
-                out_input = input(f"Hedef klasör [{default_out}]: ").strip()
+                out_input = input(f"Hedef klasör (veya seçici için 'b') [{default_out}]: ").strip()
                 out_str = out_input if out_input else default_out
+            if out_str.lower() in ["b", "browse", "sec", "seç"]:
+                picked = open_native_folder_picker(default_out)
+                if picked:
+                    out_str = picked
+                    if HAS_RICH:
+                        console.print(f"[green]✓ Klasör seçildi: {out_str}[/green]")
+                    else:
+                        print(f"Klasör seçildi: {out_str}")
+                else:
+                    out_str = default_out
             output_dir = Path(out_str).resolve()
 
             # Bitrate selection

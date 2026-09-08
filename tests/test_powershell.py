@@ -50,6 +50,9 @@ class TestPowerShellScripts(unittest.TestCase):
         self.assertIn("install.ps1", content)
         self.assertIn(".venv", content)
         self.assertIn("@args", content)
+        # Ensure [CmdletBinding()] and param() are NOT present so arguments pass without ParameterBindingException
+        self.assertNotIn("[CmdletBinding()]", content)
+        self.assertNotIn("param()", content)
 
     def test_mp3fy_ps1_content(self):
         self.assertTrue(self.mp3fy_ps1.exists(), "mp3fy.ps1 must exist")
@@ -57,6 +60,11 @@ class TestPowerShellScripts(unittest.TestCase):
         self.assertIn("[System.Text.Encoding]::UTF8", content)
         self.assertIn("@args", content)
         self.assertIn("main.py", content)
+        # Ensure [CmdletBinding()] and param() are NOT present so arguments pass without ParameterBindingException
+        self.assertNotIn("[CmdletBinding()]", content)
+        self.assertNotIn("param()", content)
+        # Verify portable dynamic path detection
+        self.assertIn("$PSScriptRoot", content)
 
     def test_mp3fy_cmd_content(self):
         self.assertTrue(self.mp3fy_cmd.exists(), "mp3fy.cmd must exist")
@@ -65,6 +73,8 @@ class TestPowerShellScripts(unittest.TestCase):
         self.assertIn("python.exe", content)
         self.assertIn("main.py", content)
         self.assertIn("%*", content)
+        self.assertIn("%~dp0", content)
+        self.assertIn("exit /b %ERRORLEVEL%", content)
 
     def test_run_bat_content(self):
         self.assertTrue(self.run_bat.exists(), "run.bat must exist")
@@ -72,6 +82,14 @@ class TestPowerShellScripts(unittest.TestCase):
         self.assertIn("chcp 65001", content)
         self.assertIn("install.ps1", content)
         self.assertIn("main.py", content)
+        self.assertIn("exit /b %ERRORLEVEL%", content)
+
+    def test_install_ps1_profile_function_no_cmdletbinding(self):
+        content = self.install_ps1.read_text(encoding="utf-8")
+        # In the profile snippet, function mp3fy should NOT use [CmdletBinding()] or param()
+        self.assertNotIn("[CmdletBinding()]\n    param()\n    & \"$VenvPython\"", content)
+        # Verify WinGet Links check
+        self.assertIn("WinGet\\Links\\ffmpeg.exe", content)
 
 
 if __name__ == "__main__":

@@ -106,11 +106,15 @@ class TestWindowsPlatform(unittest.TestCase):
                 mock_res.stdout = "C:\\Users\\TestUser\\Music\n"
                 mock_run.return_value = mock_res
 
-                res = open_native_folder_picker()
+                res = open_native_folder_picker("C:\\Users\\O'Connor\\Music")
                 self.assertEqual(res, "C:\\Users\\TestUser\\Music")
                 mock_run.assert_called_once()
                 args, kwargs = mock_run.call_args
-                self.assertIn("powershell", args[0])
+                cmd = args[0]
+                self.assertIn("powershell", cmd)
+                self.assertIn("-STA", cmd)
+                # Ensure single quotes are escaped as '' in PowerShell command
+                self.assertIn("O''Connor", cmd[cmd.index("-Command") + 1])
 
     def test_downloader_ffmpeg_detection_windows(self):
         from core.downloader import Downloader, SongMetadata
@@ -118,8 +122,9 @@ class TestWindowsPlatform(unittest.TestCase):
 
         with patch("sys.platform", "win32"):
             with patch("shutil.which", return_value=None):
-                downloader = Downloader()
-                self.assertIsNotNone(downloader)
+                with patch.dict("os.environ", {"LOCALAPPDATA": "C:\\fake\\appdata"}):
+                    downloader = Downloader()
+                    self.assertIsNotNone(downloader)
 
 
 if __name__ == "__main__":

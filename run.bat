@@ -13,4 +13,4 @@ if exist ".venv\Scripts\python.exe" (
 ) else (
     python "%~dp0main.py" %*
 )
-endlocal
+endlocal & exit /b %ERRORLEVEL%

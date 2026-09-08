@@ -205,11 +205,24 @@ class Downloader:
                 Path("/usr/bin/ffmpeg"),
                 Path("/usr/local/bin/ffmpeg"),
                 Path("C:/ffmpeg/bin/ffmpeg.exe"),
+                Path("C:/Program Files/ffmpeg/bin/ffmpeg.exe"),
                 Path("C:/ProgramData/chocolatey/bin/ffmpeg.exe"),
                 Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin" / "ffmpeg.exe",
                 Path.home() / "scoop" / "shims" / "ffmpeg.exe",
                 Path.home() / "AppData" / "Local" / "ffmpeg" / "bin" / "ffmpeg.exe",
             ]
+            if sys.platform == "win32":
+                local_app = os.environ.get("LOCALAPPDATA")
+                if local_app:
+                    candidates.append(Path(local_app) / "Microsoft" / "WinGet" / "Links" / "ffmpeg.exe")
+                    winget_pkg = Path(local_app) / "Microsoft" / "WinGet" / "Packages"
+                    if winget_pkg.exists():
+                        try:
+                            for match in winget_pkg.glob("**/ffmpeg.exe"):
+                                candidates.append(match)
+                                break
+                        except Exception:
+                            pass
             for candidate in candidates:
                 if candidate.exists() and candidate.is_file():
                     ffmpeg_bin = str(candidate)

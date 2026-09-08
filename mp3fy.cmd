@@ -7,4 +7,4 @@ if exist "%SCRIPT_DIR%.venv\Scripts\python.exe" (
 ) else (
     python "%SCRIPT_DIR%main.py" %*
 )
-endlocal
+endlocal & exit /b %ERRORLEVEL%

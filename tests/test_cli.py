@@ -88,5 +88,39 @@ class TestCLI(unittest.TestCase):
                         self.assertIn("sudo apt install ffmpeg", printed_text)
 
 
+    def test_interactive_mode_browse_folder(self):
+        with patch("main.HAS_RICH", False):
+            with patch("main.show_banner"):
+                with patch("main.check_dependencies"):
+                    with patch("main.parse_spotify_url", return_value=("track", "12345")):
+                        with patch("main.SpotifyFetcher") as mock_fetcher_cls:
+                            with patch("main.open_native_folder_picker", return_value="/custom/picked/path") as mock_picker:
+                                with patch("main.execute_download") as mock_exec:
+                                    mock_fetcher = MagicMock()
+                                    mock_data = MagicMock()
+                                    mock_data.tracks = [MagicMock()]
+                                    mock_data.batches = []
+                                    mock_fetcher.fetch.return_value = mock_data
+                                    mock_fetcher_cls.return_value = mock_fetcher
+
+                                    # Sequence of inputs: URL, 'b' (browse folder), '320' (bitrate), '2' (workers), 'q' (exit)
+                                    input_values = [
+                                        "https://open.spotify.com/track/12345",
+                                        "b",
+                                        "320",
+                                        "2",
+                                        "q",
+                                    ]
+                                    with patch("builtins.input", side_effect=input_values):
+                                        with self.assertRaises(SystemExit):
+                                            main.interactive_mode()
+
+                                        mock_picker.assert_called_once()
+                                        mock_exec.assert_called_once()
+                                        call_args = mock_exec.call_args.args
+                                        from pathlib import Path
+                                        self.assertEqual(call_args[2], Path("/custom/picked/path").resolve())
+
+
 if __name__ == "__main__":
     unittest.main()
