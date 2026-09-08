@@ -4,6 +4,7 @@ ID3 Metadata & Album Art Tagger for MP3fy using Mutagen
 
 import os
 import logging
+import re
 from pathlib import Path
 from typing import Optional, Union
 import requests
@@ -106,27 +107,31 @@ def apply_id3_tags(
             tags.add(TALB(encoding=3, text=str(album).strip()))
 
         # Year / Date
-        if year:
+        if year is not None:
             year_str = str(year).strip()
-            # Extract 4-digit year if full ISO string was passed
-            if len(year_str) > 4 and year_str[:4].isdigit():
-                year_clean = year_str[:4]
-            else:
-                year_clean = year_str
-            tags.add(TDRC(encoding=3, text=year_clean))
-            tags.add(TYER(encoding=3, text=year_clean))
+            if year_str:
+                match = re.search(r"\b(\d{4})\b", year_str)
+                year_clean = match.group(1) if match else year_str
+                tags.add(TDRC(encoding=3, text=year_clean))
+                tags.add(TYER(encoding=3, text=year_clean))
 
         # Track Number (format "current/total" or "current")
         if track_number is not None:
-            if total_tracks:
-                trck_text = f"{track_number}/{total_tracks}"
+            track_str = str(track_number).strip()
+            if "/" in track_str:
+                trck_text = track_str
+            elif total_tracks is not None and str(total_tracks).strip():
+                trck_text = f"{track_str}/{str(total_tracks).strip()}"
             else:
-                trck_text = str(track_number)
-            tags.add(TRCK(encoding=3, text=trck_text))
+                trck_text = track_str
+            if trck_text:
+                tags.add(TRCK(encoding=3, text=trck_text))
 
         # Disc Number
         if disc_number is not None:
-            tags.add(TPOS(encoding=3, text=str(disc_number)))
+            disc_str = str(disc_number).strip()
+            if disc_str:
+                tags.add(TPOS(encoding=3, text=disc_str))
 
         # Genre
         if genre:
@@ -150,21 +155,26 @@ def apply_id3_tags(
                 logger.warning(f"Failed to fetch cover art from {cover_url}: {img_err}")
 
         if image_data:
-            mime = "image/jpeg"
-            if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
+            mime = None
+            if image_data.startswith(b"\xff\xd8"):
+                mime = "image/jpeg"
+            elif image_data.startswith(b"\x89PNG\r\n\x1a\n"):
                 mime = "image/png"
             elif image_data.startswith(b"RIFF") and b"WEBP" in image_data[:12]:
                 mime = "image/webp"
 
-            tags.add(
-                APIC(
-                    encoding=3,
-                    mime=mime,
-                    type=3,  # 3 is front cover
-                    desc="Cover",
-                    data=image_data,
+            if mime:
+                tags.add(
+                    APIC(
+                        encoding=3,
+                        mime=mime,
+                        type=3,  # 3 is front cover
+                        desc="Cover",
+                        data=image_data,
+                    )
                 )
-            )
+            else:
+                logger.warning("Cover art data is not a valid JPEG, PNG, or WebP image; omitting APIC frame.")
 
         # Save with ID3v2.3 for maximum compatibility across players
         tags.save(str(file_path), v2_version=3)

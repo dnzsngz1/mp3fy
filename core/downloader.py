@@ -9,6 +9,7 @@ import shutil
 import logging
 from pathlib import Path
 from typing import Callable, Optional, Dict, Any, List
+import uuid
 from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 
@@ -19,6 +20,49 @@ from core.tagger import apply_id3_tags
 from core.utils import sanitize_filename, ensure_directory, get_default_music_dir
 
 logger = logging.getLogger(__name__)
+
+
+def find_ffmpeg() -> Optional[str]:
+    """
+    Locates FFmpeg binary on the host system across PATH and common install locations.
+    """
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if not ffmpeg_bin and sys.platform == "win32":
+        ffmpeg_bin = shutil.which("ffmpeg.exe")
+
+    if not ffmpeg_bin:
+        exe_suffix = ".exe" if sys.platform == "win32" else ""
+        candidates = [
+            Path.home() / "bin" / f"ffmpeg{exe_suffix}",
+            Path.home() / ".local" / "bin" / f"ffmpeg{exe_suffix}",
+            Path.home() / ".local" / "share" / "ffmpeg" / "ffmpeg",
+            Path("/usr/bin/ffmpeg"),
+            Path("/usr/local/bin/ffmpeg"),
+            Path("C:/ffmpeg/bin/ffmpeg.exe"),
+            Path("C:/Program Files/ffmpeg/bin/ffmpeg.exe"),
+            Path("C:/ProgramData/chocolatey/bin/ffmpeg.exe"),
+            Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin" / "ffmpeg.exe",
+            Path.home() / "scoop" / "shims" / "ffmpeg.exe",
+            Path.home() / "AppData" / "Local" / "ffmpeg" / "bin" / "ffmpeg.exe",
+        ]
+        if sys.platform == "win32":
+            local_app = os.environ.get("LOCALAPPDATA")
+            if local_app:
+                candidates.append(Path(local_app) / "Microsoft" / "WinGet" / "Links" / "ffmpeg.exe")
+                winget_pkg = Path(local_app) / "Microsoft" / "WinGet" / "Packages"
+                if winget_pkg.exists():
+                    try:
+                        for match in winget_pkg.glob("**/ffmpeg.exe"):
+                            candidates.append(match)
+                            break
+                    except Exception:
+                        pass
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                ffmpeg_bin = str(candidate)
+                break
+
+    return ffmpeg_bin
 
 
 class DownloadTask:
@@ -74,6 +118,7 @@ class Downloader:
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
         self._lock = threading.Lock()
         self._futures: Dict[str, Future] = {}
+        self.ffmpeg_bin = find_ffmpeg()
 
     def set_output_dir(self, output_dir: str | Path):
         self.output_dir = ensure_directory(output_dir)
@@ -88,6 +133,9 @@ class Downloader:
                 task.cancelled = True
                 task.status = "cancelled"
                 self._notify(task)
+            future = self._futures.get(song_id)
+            if future:
+                future.cancel()
 
     def cancel_all(self):
         with self._lock:
@@ -96,6 +144,8 @@ class Downloader:
                     task.cancelled = True
                     task.status = "cancelled"
                     self._notify(task)
+            for fut in self._futures.values():
+                fut.cancel()
 
     def download_song(
         self,
@@ -113,9 +163,8 @@ class Downloader:
             task = DownloadTask(song, target_dir, target_bitrate)
             self.tasks[song.id] = task
             self._notify(task)
-
-        future = self.executor.submit(self._download_worker, task)
-        self._futures[song.id] = future
+            future = self.executor.submit(self._download_worker, task)
+            self._futures[song.id] = future
         return task
 
     def download_playlist(
@@ -146,113 +195,93 @@ class Downloader:
             return
 
         song = task.song
-        task.status = "searching"
-        task.progress = 5.0
-        self._notify(task)
-
-        # Build clean filename: "Artist - Title.mp3"
-        safe_artist = sanitize_filename(song.artist)
-        safe_title = sanitize_filename(song.title)
-        base_name = f"{safe_artist} - {safe_title}"
-        final_mp3_path = task.output_dir / f"{base_name}.mp3"
+        exec_token = uuid.uuid4().hex[:8]
         temp_dir = task.output_dir / ".temp_download"
-        ensure_directory(temp_dir)
-        temp_out_tmpl = str(temp_dir / f"{song.id}_%(id)s.%(ext)s")
-
-        # Custom progress hook for yt-dlp
-        def ytdl_progress_hook(d):
-            if task.cancelled:
-                raise Exception("Download cancelled by user.")
-
-            if d["status"] == "downloading":
-                task.status = "downloading"
-                total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
-                downloaded_bytes = d.get("downloaded_bytes") or 0
-
-                if total_bytes > 0:
-                    # Map yt-dlp 0-100% to task 10-85%
-                    percent = (downloaded_bytes / total_bytes) * 75.0
-                    task.progress = 10.0 + percent
-
-                speed = d.get("speed")
-                if speed:
-                    task.speed = f"{speed / (1024 * 1024):.1f} MB/s" if speed > 1024 * 1024 else f"{speed / 1024:.0f} KB/s"
-
-                eta = d.get("eta")
-                if eta:
-                    task.eta = f"{eta}s"
-
-                self._notify(task)
-
-            elif d["status"] == "finished":
-                task.status = "converting"
-                task.progress = 88.0
-                task.speed = ""
-                task.eta = ""
-                self._notify(task)
-
-        # Find ffmpeg binary if available
-        ffmpeg_bin = shutil.which("ffmpeg")
-        if not ffmpeg_bin and sys.platform == "win32":
-            ffmpeg_bin = shutil.which("ffmpeg.exe")
-
-        if not ffmpeg_bin:
-            exe_suffix = ".exe" if sys.platform == "win32" else ""
-            candidates = [
-                Path.home() / "bin" / f"ffmpeg{exe_suffix}",
-                Path.home() / ".local" / "bin" / f"ffmpeg{exe_suffix}",
-                Path.home() / ".local" / "share" / "ffmpeg" / "ffmpeg",
-                Path("/usr/bin/ffmpeg"),
-                Path("/usr/local/bin/ffmpeg"),
-                Path("C:/ffmpeg/bin/ffmpeg.exe"),
-                Path("C:/Program Files/ffmpeg/bin/ffmpeg.exe"),
-                Path("C:/ProgramData/chocolatey/bin/ffmpeg.exe"),
-                Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin" / "ffmpeg.exe",
-                Path.home() / "scoop" / "shims" / "ffmpeg.exe",
-                Path.home() / "AppData" / "Local" / "ffmpeg" / "bin" / "ffmpeg.exe",
-            ]
-            if sys.platform == "win32":
-                local_app = os.environ.get("LOCALAPPDATA")
-                if local_app:
-                    candidates.append(Path(local_app) / "Microsoft" / "WinGet" / "Links" / "ffmpeg.exe")
-                    winget_pkg = Path(local_app) / "Microsoft" / "WinGet" / "Packages"
-                    if winget_pkg.exists():
-                        try:
-                            for match in winget_pkg.glob("**/ffmpeg.exe"):
-                                candidates.append(match)
-                                break
-                        except Exception:
-                            pass
-            for candidate in candidates:
-                if candidate.exists() and candidate.is_file():
-                    ffmpeg_bin = str(candidate)
-                    break
-
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "outtmpl": temp_out_tmpl,
-            "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": task.bitrate,
-                }
-            ],
-            "progress_hooks": [ytdl_progress_hook],
-            "quiet": True,
-            "no_warnings": True,
-            "noplaylist": True,
-            "default_search": "ytsearch",
-        }
-        if ffmpeg_bin:
-            ydl_opts["ffmpeg_location"] = ffmpeg_bin
-
-        search_query = f"ytsearch1:{song.artist} - {song.title} audio"
 
         try:
+            task.status = "searching"
+            task.progress = 5.0
+            self._notify(task)
+
+            # Pre-flight FFmpeg check
+            ffmpeg_bin = self.ffmpeg_bin or find_ffmpeg()
+            if not ffmpeg_bin:
+                error_msg = "FFmpeg bulunamadı! MP3 dönüştürme için FFmpeg yüklenmelidir."
+                task.status = "error"
+                task.error_message = error_msg
+                logger.error(error_msg)
+                self._notify(task)
+                return
+
+            # Build clean filename: "Artist - Title.mp3", clamping length safely
+            safe_artist = sanitize_filename(song.artist, max_length=100)
+            safe_title = sanitize_filename(song.title, max_length=100)
+            raw_base = f"{safe_artist} - {safe_title}"
+            base_name = sanitize_filename(raw_base, max_length=180)
+            final_mp3_path = task.output_dir / f"{base_name}.mp3"
+
+            ensure_directory(temp_dir)
+            temp_out_tmpl = str(temp_dir / f"{song.id}_{exec_token}_%(id)s.%(ext)s")
+
+            # Custom progress hook for yt-dlp
+            def ytdl_progress_hook(d):
+                if task.cancelled:
+                    raise Exception("Download cancelled by user.")
+
+                if d["status"] == "downloading":
+                    task.status = "downloading"
+                    total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                    downloaded_bytes = d.get("downloaded_bytes") or 0
+
+                    if total_bytes > 0:
+                        percent = (downloaded_bytes / total_bytes) * 75.0
+                        task.progress = 10.0 + percent
+
+                    speed = d.get("speed")
+                    if speed:
+                        task.speed = f"{speed / (1024 * 1024):.1f} MB/s" if speed > 1024 * 1024 else f"{speed / 1024:.0f} KB/s"
+
+                    eta = d.get("eta")
+                    if eta:
+                        task.eta = f"{eta}s"
+
+                    self._notify(task)
+
+                elif d["status"] == "finished":
+                    task.status = "converting"
+                    task.progress = 88.0
+                    task.speed = ""
+                    task.eta = ""
+                    self._notify(task)
+
+            ydl_opts = {
+                "format": "bestaudio/best",
+                "outtmpl": temp_out_tmpl,
+                "postprocessors": [
+                    {
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": "mp3",
+                        "preferredquality": task.bitrate,
+                    }
+                ],
+                "progress_hooks": [ytdl_progress_hook],
+                "quiet": True,
+                "no_warnings": True,
+                "noplaylist": True,
+                "default_search": "ytsearch",
+                "socket_timeout": 30,
+                "retries": 5,
+                "fragment_retries": 5,
+                "extractor_retries": 5,
+            }
+            if ffmpeg_bin:
+                ydl_opts["ffmpeg_location"] = ffmpeg_bin
+
+            search_query = f"ytsearch1:{song.artist} - {song.title} audio"
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(search_query, download=True)
-                if not info or not info.get("entries") and not info.get("id"):
+                if not info or (not info.get("entries") and not info.get("id")):
                     # Fallback search without "audio" suffix
                     search_query_fallback = f"ytsearch1:{song.artist} - {song.title}"
                     info = ydl.extract_info(search_query_fallback, download=True)
@@ -262,35 +291,54 @@ class Downloader:
                 self._notify(task)
                 return
 
-            # Find generated temp mp3 file
-            temp_mp3_files = list(temp_dir.glob(f"{song.id}_*.mp3"))
+            # Find generated temp mp3 file with isolation (do not filter st_size > 0 here)
+            temp_mp3_files = [
+                p for p in temp_dir.glob(f"{song.id}_{exec_token}_*.mp3")
+                if p.is_file()
+            ]
             if not temp_mp3_files:
                 raise FileNotFoundError("Dönüştürülen MP3 dosyası bulunamadı.")
 
             temp_mp3 = temp_mp3_files[0]
+            if temp_mp3.stat().st_size == 0:
+                raise ValueError("Dönüştürülen MP3 dosyası bozuk veya 0 bayt.")
+
+            # Move temp file to final destination (guard final_mp3_path.unlink against locks)
+            try:
+                if final_mp3_path.exists():
+                    final_mp3_path.unlink()
+                shutil.move(str(temp_mp3), str(final_mp3_path))
+            except (PermissionError, OSError):
+                alt_path = task.output_dir / f"{base_name}_{int(time.time())}.mp3"
+                shutil.move(str(temp_mp3), str(alt_path))
+                final_mp3_path = alt_path
 
             # Tagging phase
             task.status = "tagging"
             task.progress = 92.0
             self._notify(task)
 
-            # Move temp file to final destination
-            if final_mp3_path.exists():
-                final_mp3_path.unlink()
-            shutil.move(str(temp_mp3), str(final_mp3_path))
-
             # Apply ID3 tags and embed album cover
-            apply_id3_tags(
-                mp3_path=final_mp3_path,
-                title=song.title,
-                artist=song.artist,
-                album=song.album or song.title,
-                year=song.year,
-                track_number=song.track_number,
-                total_tracks=song.total_tracks,
-                cover_url=song.cover_url,
-                comment="Downloaded with MP3fy",
-            )
+            try:
+                tag_ok = apply_id3_tags(
+                    mp3_path=final_mp3_path,
+                    title=song.title,
+                    artist=song.artist,
+                    album=song.album or song.title,
+                    year=song.year,
+                    track_number=song.track_number,
+                    total_tracks=song.total_tracks,
+                    cover_url=song.cover_url,
+                    comment="Downloaded with MP3fy",
+                )
+                if not tag_ok:
+                    logger.warning(f"ID3 etiketleri tam uygulanamadı: {final_mp3_path.name}")
+            except Exception as tag_err:
+                logger.error(f"ID3 etiketleme hatası: {tag_err}")
+                task.status = "error"
+                task.error_message = f"ID3 etiketleme hatası: {tag_err}"
+                self._notify(task)
+                return
 
             # Finished successfully!
             task.status = "completed"
@@ -306,14 +354,15 @@ class Downloader:
             if task.cancelled:
                 task.status = "cancelled"
             else:
-                logger.error(f"Error downloading {song.title}: {e}", exc_info=True)
+                logger.error(f"Error downloading {getattr(song, 'title', 'unknown')}: {e}", exc_info=True)
                 task.status = "error"
                 task.error_message = str(e)
             self._notify(task)
         finally:
-            # Clean any residual temp files for this song
-            for temp_f in temp_dir.glob(f"{song.id}_*"):
-                try:
-                    temp_f.unlink()
-                except Exception:
-                    pass
+            # Clean any residual temp files strictly for this song and execution token
+            if temp_dir.exists():
+                for temp_f in temp_dir.glob(f"{song.id}_{exec_token}_*"):
+                    try:
+                        temp_f.unlink()
+                    except Exception:
+                        pass

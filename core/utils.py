@@ -5,54 +5,115 @@ Utility functions for MP3fy
 import os
 import re
 import sys
+import math
 import subprocess
 import platform
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
+
+WINDOWS_RESERVED = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
 
 
-def sanitize_filename(filename: str, replacement: str = "_") -> str:
+def sanitize_filename(
+    filename: str,
+    replacement: str = "_",
+    max_length: int = 200,
+    default: str = "unnamed_track",
+) -> str:
     """
     Remove or replace characters that are invalid in file names across Windows, Linux, and macOS.
+    Guards against Windows reserved device names, truncates before stripping trailing dots/spaces,
+    clamps to <= max_length chars / 250 bytes, and returns a safe fallback if empty.
     """
+    fallback = default or "unnamed_track"
     if not filename:
-        return "unnamed_track"
-    
+        return fallback
+
     # Remove control characters
     cleaned = re.sub(r'[\x00-\x1f\x7f]', '', filename)
-    
-    # Replace illegal filesystem characters: < > : " / \ | ? *
+
+    # If illegal characters have adjacent spaces or form repeated separators, replace with space
+    cleaned = re.sub(r'\s+[<>:"/\\|?*]+|\s*[<>:"/\\|?*]+\s+', ' ', cleaned)
+
+    # Replace remaining illegal filesystem characters: < > : " / \ | ? *
     cleaned = re.sub(r'[<>:"/\\|?*]', replacement, cleaned)
-    
-    # Normalize multiple spaces or replacements
+
+    # Normalize multiple spaces (preserving legitimate underscores)
     cleaned = re.sub(r'\s+', ' ', cleaned)
-    cleaned = re.sub(r'[ _]+', ' ', cleaned)
-    
-    # Remove trailing/leading dots and spaces (problematic on Windows)
+
+    # Strip leading/trailing dots and spaces
     cleaned = cleaned.strip('. ')
-    
+
+    # If empty after initial cleanup
+    if not cleaned:
+        return fallback
+
+    # Check against Windows reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9, case-insensitive)
+    stem = cleaned.split(".")[0].strip()
+    if stem.upper() in WINDOWS_RESERVED:
+        cleaned = f"_{cleaned}"
+
+    # Truncate to max_length AFTER any prefixing
+    max_len = max_length if max_length is not None else 200
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len]
+
+    # Enforce safe byte clamp for Linux filesystems (max 250 bytes UTF-8)
+    encoded = cleaned.encode("utf-8")
+    if len(encoded) > 250:
+        cleaned = encoded[:250].decode("utf-8", errors="ignore")
+
+    # Remove trailing dots and spaces that may result from truncation
+    cleaned = cleaned.rstrip('. ')
+
     # If empty after cleanup
     if not cleaned:
-        return "unnamed_track"
-        
-    return cleaned[:200]  # Avoid MAX_PATH limits
+        return fallback
+
+    return cleaned
 
 
-def format_duration(duration_ms: int | float | None) -> str:
+def format_duration(
+    duration_ms: Optional[Union[int, float]],
+    in_seconds: Optional[bool] = None,
+) -> str:
     """
-    Format duration in milliseconds to MM:SS or HH:MM:SS string.
+    Format duration in milliseconds (or seconds if in_seconds=True) to MM:SS or HH:MM:SS string.
+    Ensures 0 <= duration_ms < 1000 evaluates to "0:00" (or "0:01" if rounded),
+    correctly formatting sub-second inputs and disambiguating milliseconds vs seconds.
+    Guards against non-finite values (NaN, Inf) and negative durations.
     """
-    if not duration_ms or duration_ms < 0:
+    if duration_ms is None:
         return "0:00"
-    
-    total_seconds = int(duration_ms // 1000) if duration_ms > 1000 else int(duration_ms)
+
+    if not isinstance(duration_ms, (int, float)):
+        return "0:00"
+
+    if not math.isfinite(duration_ms) or duration_ms <= 0:
+        return "0:00"
+
+    if in_seconds is True:
+        total_seconds = int(round(duration_ms))
+    else:
+        # Default behavior: input is in milliseconds.
+        # Sub-second inputs (0 <= duration_ms < 1000) evaluate to 0 seconds ("0:00").
+        total_seconds = int(duration_ms // 1000)
+
+    if total_seconds <= 0:
+        return "0:00"
+
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
     seconds = total_seconds % 60
-    
+
     if hours > 0:
         return f"{hours}:{minutes:02d}:{seconds:02d}"
     return f"{minutes}:{seconds:02d}"
+
 
 
 def ensure_directory(path: str | Path) -> Path:
