@@ -11,14 +11,23 @@ echo "=================================================="
 echo "🎵 MP3fy Linux CLI Kurulumu Başlatılıyor..."
 echo "=================================================="
 
-# Python 3 Kontrolü
+# Python 3 ve Sürüm Kontrolü (>= 3.9)
 if ! command -v python3 &> /dev/null; then
     echo "[!] Hata: Python 3 sistemde bulunamadı. Lütfen python3 yükleyin."
     exit 1
 fi
 
 PYTHON_BIN=$(command -v python3)
-echo "[+] Python tespit edildi: $PYTHON_BIN"
+PY_VER=$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PY_MAJOR=$("$PYTHON_BIN" -c 'import sys; print(sys.version_info.major)')
+PY_MINOR=$("$PYTHON_BIN" -c 'import sys; print(sys.version_info.minor)')
+
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 9 ]; }; then
+    echo "[!] Hata: Python 3.9 veya daha yeni bir sürüm gereklidir (Tespit edilen: $PY_VER)."
+    exit 1
+fi
+
+echo "[+] Python tespit edildi: $PYTHON_BIN (v$PY_VER)"
 
 # FFmpeg Kontrolü
 if ! command -v ffmpeg &> /dev/null; then

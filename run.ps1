@@ -23,6 +23,14 @@ if (-not (Test-Path $VenvPython)) {
     $InstallScript = Join-Path $ProjectDir "install.ps1"
     if (Test-Path $InstallScript) {
         & $InstallScript
+        if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+            Write-Host "[!] Hata: install.ps1 başarısız oldu (Çıkış kodu: $LASTEXITCODE)." -ForegroundColor Red
+            exit $LASTEXITCODE
+        }
+        if (-not $? -or -not (Test-Path $VenvPython)) {
+            Write-Host "[!] Hata: Kurulum tamamlanamadı veya sanal ortam oluşturulamadı." -ForegroundColor Red
+            exit 1
+        }
     } else {
         Write-Host "[!] Hata: install.ps1 bulunamadı." -ForegroundColor Red
         exit 1

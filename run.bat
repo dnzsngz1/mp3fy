@@ -6,6 +6,7 @@ chcp 65001 >nul
 if not exist ".venv\Scripts\python.exe" (
     echo [*] MP3fy ortami bulunamadi, kurulum baslatiliyor...
     powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+    if errorlevel 1 exit /b %ERRORLEVEL%
 )
 
 if exist ".venv\Scripts\python.exe" (

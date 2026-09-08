@@ -195,7 +195,7 @@ exit `$LASTEXITCODE
 # Global kullanıcı PATH dizinine ($HOME\bin) yükle
 $UserCmd = Join-Path $UserBinDir "mp3fy.cmd"
 $UserPs1 = Join-Path $UserBinDir "mp3fy.ps1"
-Set-Content -Path $UserCmd -Value $UserCmdContent -Encoding ASCII
+Set-Content -Path $UserCmd -Value $UserCmdContent -Encoding UTF8
 Set-Content -Path $UserPs1 -Value $UserPs1Content -Encoding UTF8
 
 Write-Host "`n[✓] Global komut başlatıcıları oluşturuldu:" -ForegroundColor Green

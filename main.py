@@ -11,17 +11,17 @@ import argparse
 from pathlib import Path
 from typing import Optional, List
 
+import io
+
 # Ensure UTF-8 console output and ANSI escape sequence support across platforms
-if sys.platform == "win32":
+for stream in (sys.stdout, sys.stderr, sys.stdin):
     try:
-        if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        if hasattr(sys.stderr, "reconfigure"):
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-        if hasattr(sys.stdin, "reconfigure"):
-            sys.stdin.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, io.UnsupportedOperation, Exception):
         pass
+
+if sys.platform == "win32":
     try:
         import ctypes
         kernel32 = ctypes.windll.kernel32
@@ -48,6 +48,7 @@ local_bins = [
     str(Path.home() / ".local" / "share" / "ffmpeg"),
     str(BASE_DIR / "bin"),
     str(BASE_DIR / ".venv" / "Scripts"),
+    str(BASE_DIR / ".venv" / "bin"),
 ]
 if sys.platform == "win32":
     local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
@@ -93,11 +94,15 @@ try:
     from rich.prompt import Prompt, Confirm
     from rich.text import Text
     from rich import print as rprint
+    from rich.markup import escape
     HAS_RICH = True
     console = Console()
 except ImportError:
     HAS_RICH = False
     console = None
+
+    def escape(text: str) -> str:
+        return str(text)
 
 
 BANNER_TEXT = r"""
@@ -193,11 +198,11 @@ def execute_download(
         summary_table.add_column("Özellik", style="bold yellow")
         summary_table.add_column("Değer", style="white")
 
-        summary_table.add_row("Başlık", data.title)
-        summary_table.add_row("Sanatçı / Sahip", data.owner or "Bilinmiyor")
-        summary_table.add_row("Tür", data.type.upper())
+        summary_table.add_row("Başlık", escape(str(data.title)))
+        summary_table.add_row("Sanatçı / Sahip", escape(str(data.owner or "Bilinmiyor")))
+        summary_table.add_row("Tür", escape(str(data.type.upper())))
         summary_table.add_row("İndirilecek Şarkı", f"{total_tracks} adet")
-        summary_table.add_row("Hedef Klasör", str(output_dir))
+        summary_table.add_row("Hedef Klasör", escape(str(output_dir)))
         summary_table.add_row("Ses Kalitesi", f"{bitrate} kbps")
         summary_table.add_row("Eşzamanlı İşlem", str(max_workers))
         console.print(summary_table)
@@ -226,7 +231,7 @@ def execute_download(
         overall_progress = Progress(
             SpinnerColumn(spinner_name="dots"),
             TextColumn("[bold cyan]{task.description}"),
-            BarColumn(bar_width=40),
+            BarColumn(bar_width=None),
             TaskProgressColumn(),
             TextColumn("•"),
             TimeRemainingColumn(),
@@ -241,8 +246,8 @@ def execute_download(
             # Dictionary to track task progress
             def on_progress_rich(task: DownloadTask):
                 nonlocal completed_count, failed_count
-                title_clean = task.song.title[:35]
-                artist_clean = task.song.artist[:25]
+                title_clean = escape(task.song.title[:35])
+                artist_clean = escape(task.song.artist[:25])
                 label = f"{artist_clean} - {title_clean}"
 
                 if task.status == "completed":
@@ -252,14 +257,18 @@ def execute_download(
                         completed=completed_count + failed_count,
                         description=f"[bold green]Tamamlandı: {completed_count}/{total_tracks} ({task.file_size_mb or 0:.1f} MB)",
                     )
-                    console.print(f" [bold green]✓[/bold green] [white]{label}[/white] - [green]Tamamlandı ({task.file_size_mb or 0:.1f} MB)[/green]")
+                    overall_progress.console.print(
+                        f" [bold green]✓[/bold green] [white]{label}[/white] - [green]Tamamlandı ({task.file_size_mb or 0:.1f} MB)[/green]"
+                    )
                 elif task.status == "error":
                     failed_count += 1
                     overall_progress.update(
                         overall_task,
                         completed=completed_count + failed_count,
                     )
-                    console.print(f" [bold red]✗[/bold red] [white]{label}[/white] - [red]Hata: {task.error_message}[/red]")
+                    overall_progress.console.print(
+                        f" [bold red]✗[/bold red] [white]{label}[/white] - [red]Hata: {escape(str(task.error_message))}[/red]"
+                    )
 
             active_downloader = Downloader(
                 output_dir=output_dir,
@@ -303,6 +312,10 @@ def execute_download(
                 break
             time.sleep(0.4)
 
+    if tasks:
+        completed_count = sum(1 for t in tasks if getattr(t, "status", "") == "completed")
+        failed_count = sum(1 for t in tasks if getattr(t, "status", "") in ["error", "cancelled"])
+
     duration = time.time() - start_time
     duration_str = f"{int(duration // 60)}d {int(duration % 60)}s"
 
@@ -314,7 +327,7 @@ def execute_download(
                 f"• Başarılı: [bold green]{completed_count}[/bold green] / {total_tracks}\n"
                 f"• Hatalı: [bold red]{failed_count}[/bold red]\n"
                 f"• Toplam Süre: [bold cyan]{duration_str}[/bold cyan]\n"
-                f"• Kayıt Konumu: [bold white]{output_dir}[/bold white]"
+                f"• Kayıt Konumu: [bold white]{escape(str(output_dir))}[/bold white]"
             ),
             title="[bold green]İşlem Sonucu[/bold green]",
             border_style="green" if failed_count == 0 else "yellow",
@@ -326,6 +339,10 @@ def execute_download(
         print(f"[*] Kayıt konumu: {output_dir}")
         print(f"[*] Toplam süre: {duration_str}")
         print("=" * 60)
+
+    if (total_tracks > 0 and completed_count == 0) or failed_count > 0:
+        return 1
+    return 0
 
 
 def interactive_mode():
@@ -383,9 +400,9 @@ def interactive_mode():
                 info_table = Table(border_style="blue", show_header=False)
                 info_table.add_column("Alan", style="bold cyan")
                 info_table.add_column("Detay", style="white")
-                info_table.add_row("Tür", data.type.upper())
-                info_table.add_row("Başlık", data.title)
-                info_table.add_row("Sanatçı / Sahip", data.owner or "Belirtilmemiş")
+                info_table.add_row("Tür", escape(str(data.type.upper())))
+                info_table.add_row("Başlık", escape(str(data.title)))
+                info_table.add_row("Sanatçı / Sahip", escape(str(data.owner or "Belirtilmemiş")))
                 info_table.add_row("Şarkı Sayısı", str(len(data.tracks)))
                 console.print(Panel(info_table, title="[bold green]Bağlantı Bilgisi[/bold green]"))
             else:
@@ -439,7 +456,7 @@ def interactive_mode():
                 if picked:
                     out_str = picked
                     if HAS_RICH:
-                        console.print(f"[green]✓ Klasör seçildi: {out_str}[/green]")
+                        console.print(f"[green]✓ Klasör seçildi: {escape(str(out_str))}[/green]")
                     else:
                         print(f"Klasör seçildi: {out_str}")
                 else:
@@ -479,7 +496,7 @@ def interactive_mode():
             sys.exit(0)
         except Exception as e:
             if HAS_RICH:
-                console.print(f"[bold red][!] Hata oluştu: {e}[/bold red]")
+                console.print(f"[bold red][!] Hata oluştu: {escape(str(e))}[/bold red]")
             else:
                 print(f"[!] Hata oluştu: {e}")
 
@@ -547,16 +564,24 @@ def main():
     check_dependencies()
 
     out_path = Path(args.output).resolve() if args.output else get_default_music_dir()
-    ensure_directory(out_path)
+    try:
+        ensure_directory(out_path)
+    except OSError as e:
+        msg = f"[!] Hata: Hedef klasör oluşturulamadı veya erişim engellendi: {e}"
+        if HAS_RICH:
+            console.print(f"[bold red]{escape(msg)}[/bold red]")
+        else:
+            print(msg)
+        sys.exit(1)
 
     if HAS_RICH:
-        console.print(f"[*] Spotify bağlantısı çözümleniyor: [bold cyan]{args.url}[/bold cyan]")
+        console.print(f"[*] Spotify bağlantısı çözümleniyor: [bold cyan]{escape(str(args.url))}[/bold cyan]")
         with console.status("[bold cyan]Spotify verileri alınıyor...[/bold cyan]", spinner="dots"):
             fetcher = SpotifyFetcher()
             try:
                 data = fetcher.fetch(args.url)
             except Exception as e:
-                console.print(f"[bold red][!] Hata: Spotify bilgisi alınamadı - {e}[/bold red]")
+                console.print(f"[bold red][!] Hata: Spotify bilgisi alınamadı - {escape(str(e))}[/bold red]")
                 sys.exit(1)
     else:
         print(f"[*] Spotify bağlantısı çözümleniyor: {args.url}")
@@ -567,24 +592,42 @@ def main():
             print(f"[!] Hata: Spotify bilgisi alınamadı - {e}")
             sys.exit(1)
 
+    if not data or getattr(data, "tracks", None) is None:
+        msg = "[!] Hata: Spotify bağlantısından parça listesi alınamadı."
+        if HAS_RICH:
+            console.print(f"[bold red]{escape(msg)}[/bold red]")
+        else:
+            print(msg)
+        sys.exit(1)
+
     tracks = data.tracks
-    if args.batch:
+    if args.batch is not None:
+        if args.batch < 1:
+            msg = f"[!] Hata: Bölüm numarası 1 veya daha büyük olmalıdır (verilen: {args.batch})."
+            if HAS_RICH:
+                console.print(f"[bold red]{escape(msg)}[/bold red]")
+            else:
+                print(msg)
+            sys.exit(1)
         tracks = [t for t in tracks if getattr(t, "batch_index", 1) == args.batch]
         if not tracks:
             msg = f"[!] Belirtilen bölüm ({args.batch}) bulunamadı. Toplam bölüm sayısı: {len(data.batches)}"
             if HAS_RICH:
-                console.print(f"[bold red]{msg}[/bold red]")
+                console.print(f"[bold red]{escape(msg)}[/bold red]")
             else:
                 print(msg)
             sys.exit(1)
 
-    execute_download(
+    exit_code = execute_download(
         data=data,
         tracks_to_download=tracks,
         output_dir=out_path,
         bitrate=args.bitrate,
         max_workers=max(1, min(8, args.workers)),
     )
+    if exit_code == 1 or (isinstance(exit_code, int) and exit_code != 0):
+        sys.exit(1)
+    return 0
 
 
 if __name__ == "__main__":
