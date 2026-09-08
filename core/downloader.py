@@ -193,14 +193,25 @@ class Downloader:
 
         # Find ffmpeg binary if available
         ffmpeg_bin = shutil.which("ffmpeg")
+        if not ffmpeg_bin and sys.platform == "win32":
+            ffmpeg_bin = shutil.which("ffmpeg.exe")
+
         if not ffmpeg_bin:
-            for candidate in [
-                Path.home() / ".local" / "bin" / "ffmpeg",
+            exe_suffix = ".exe" if sys.platform == "win32" else ""
+            candidates = [
+                Path.home() / "bin" / f"ffmpeg{exe_suffix}",
+                Path.home() / ".local" / "bin" / f"ffmpeg{exe_suffix}",
                 Path.home() / ".local" / "share" / "ffmpeg" / "ffmpeg",
                 Path("/usr/bin/ffmpeg"),
                 Path("/usr/local/bin/ffmpeg"),
-            ]:
-                if candidate.exists() and os.access(candidate, os.X_OK):
+                Path("C:/ffmpeg/bin/ffmpeg.exe"),
+                Path("C:/ProgramData/chocolatey/bin/ffmpeg.exe"),
+                Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin" / "ffmpeg.exe",
+                Path.home() / "scoop" / "shims" / "ffmpeg.exe",
+                Path.home() / "AppData" / "Local" / "ffmpeg" / "bin" / "ffmpeg.exe",
+            ]
+            for candidate in candidates:
+                if candidate.exists() and candidate.is_file():
                     ffmpeg_bin = str(candidate)
                     break
 

@@ -94,5 +94,33 @@ class TestID3Tagger(unittest.TestCase):
             self.assertEqual(str(tags.get("TRCK")), "1/10")
 
 
+class TestWindowsPlatform(unittest.TestCase):
+    def test_open_native_folder_picker_windows(self):
+        from core.utils import open_native_folder_picker
+        from unittest.mock import patch, MagicMock
+
+        with patch("platform.system", return_value="Windows"):
+            with patch("subprocess.run") as mock_run:
+                mock_res = MagicMock()
+                mock_res.returncode = 0
+                mock_res.stdout = "C:\\Users\\TestUser\\Music\n"
+                mock_run.return_value = mock_res
+
+                res = open_native_folder_picker()
+                self.assertEqual(res, "C:\\Users\\TestUser\\Music")
+                mock_run.assert_called_once()
+                args, kwargs = mock_run.call_args
+                self.assertIn("powershell", args[0])
+
+    def test_downloader_ffmpeg_detection_windows(self):
+        from core.downloader import Downloader, SongMetadata
+        from unittest.mock import patch
+
+        with patch("sys.platform", "win32"):
+            with patch("shutil.which", return_value=None):
+                downloader = Downloader()
+                self.assertIsNotNone(downloader)
+
+
 if __name__ == "__main__":
     unittest.main()

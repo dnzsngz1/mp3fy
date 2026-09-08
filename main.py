@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP3fy - Spotify to MP3 Downloader & ID3 Tagging CLI Tool for Linux.
+MP3fy - Spotify to MP3 Downloader & ID3 Tagging CLI Tool for PowerShell, Windows & Linux.
 """
 
 import os
@@ -11,16 +11,52 @@ import argparse
 from pathlib import Path
 from typing import Optional, List
 
-# Ensure ~/.local/bin and project paths are in PATH and sys.path
+# Ensure UTF-8 console output and ANSI escape sequence support across platforms
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stdin, "reconfigure"):
+            sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        hOut = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(hOut, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(hOut, mode.value | 0x0004)
+    except Exception:
+        pass
+
+# Ensure ~/.local/bin, ~/bin, project paths, and common Windows paths are in PATH and sys.path
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-local_bin = str(Path.home() / ".local" / "bin")
-local_ffmpeg = str(Path.home() / ".local" / "share" / "ffmpeg")
+local_bins = [
+    str(Path.home() / "bin"),
+    str(Path.home() / ".local" / "bin"),
+    str(Path.home() / ".local" / "share" / "ffmpeg"),
+    str(BASE_DIR / "bin"),
+    str(BASE_DIR / ".venv" / "Scripts"),
+]
+if sys.platform == "win32":
+    local_bins.extend([
+        r"C:\ffmpeg\bin",
+        str(Path.home() / "scoop" / "shims"),
+        str(Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin"),
+        str(Path.home() / "AppData" / "Local" / "ffmpeg" / "bin"),
+        r"C:\ProgramData\chocolatey\bin",
+    ])
+
 current_path = os.environ.get("PATH", "")
-for p in [local_bin, local_ffmpeg]:
-    if p not in current_path.split(os.path.pathsep) and Path(p).exists():
+path_dirs = current_path.split(os.path.pathsep)
+for p in local_bins:
+    if p not in path_dirs and Path(p).exists():
         current_path = p + os.path.pathsep + current_path
 os.environ["PATH"] = current_path
 
@@ -28,7 +64,7 @@ from core.spotify import SpotifyFetcher, PlaylistMetadata, SongMetadata, parse_s
 from core.downloader import Downloader, DownloadTask
 from core.utils import ensure_directory, get_default_music_dir
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 # Attempt importing Rich for enhanced terminal UX
 try:
@@ -64,7 +100,7 @@ BANNER_TEXT = r"""
  |_|  |_|_|   |____/|_|  \__, |
                           __/ |
                          |___/ 
- Spotify to MP3 Downloader & Tagging Tool (Linux CLI)
+ Spotify to MP3 Downloader & Tagging Tool (PowerShell & CLI)
 """
 
 
@@ -72,29 +108,49 @@ def show_banner():
     if HAS_RICH:
         banner_panel = Panel(
             Text(BANNER_TEXT, style="bold cyan"),
-            subtitle=f"[bold green]v{VERSION} | Linux CLI Edition[/bold green]",
+            subtitle=f"[bold green]v{VERSION} | PowerShell & CLI Edition[/bold green]",
             border_style="bright_blue",
         )
         console.print(banner_panel)
     else:
         print(BANNER_TEXT)
-        print(f" v{VERSION} - Linux CLI Edition\n" + "-" * 50)
+        print(f" v{VERSION} - PowerShell & CLI Edition\n" + "-" * 50)
 
 
 def check_dependencies():
     """Verify that ffmpeg is available in the system."""
     import shutil
-    if not shutil.which("ffmpeg"):
+    ffmpeg_found = shutil.which("ffmpeg") or (sys.platform == "win32" and shutil.which("ffmpeg.exe"))
+    if not ffmpeg_found:
+        if sys.platform == "win32":
+            install_hint_rich = (
+                "  PowerShell: [yellow]winget install Gyan.FFmpeg[/yellow]\n"
+                "  veya Scoop: [yellow]scoop install ffmpeg[/yellow]\n"
+                "  veya Choco: [yellow]choco install ffmpeg[/yellow]"
+            )
+            install_hint_plain = (
+                "  PowerShell: winget install Gyan.FFmpeg\n"
+                "  veya Scoop: scoop install ffmpeg\n"
+                "  veya Choco: choco install ffmpeg"
+            )
+        elif sys.platform == "darwin":
+            install_hint_rich = "  Terminal: [yellow]brew install ffmpeg[/yellow]"
+            install_hint_plain = "  Terminal: brew install ffmpeg"
+        else:
+            install_hint_rich = "  Terminal: [yellow]sudo apt install ffmpeg[/yellow] (Ubuntu/Debian/Mint)"
+            install_hint_plain = "  Terminal: sudo apt install ffmpeg (Ubuntu/Debian/Mint)"
+
         msg = (
             "[bold red][!] Uyarı: 'ffmpeg' komutu bulunamadı![/bold red]\n"
             "MP3 dönüştürme ve ses işleme için ffmpeg gereklidir.\n"
-            "Yüklemek için terminalde şunu çalıştırabilirsiniz:\n"
-            "  [yellow]sudo apt install ffmpeg[/yellow] (Ubuntu/Debian/Mint)\n"
+            "Yüklemek için:\n"
+            f"{install_hint_rich}\n"
             "veya MP3fy otomatik kurucusu aracılığıyla ekleyin."
         ) if HAS_RICH else (
             "[!] Uyarı: 'ffmpeg' komutu bulunamadı!\n"
             "MP3 dönüştürme için ffmpeg gereklidir.\n"
-            "Yüklemek için: sudo apt install ffmpeg"
+            "Yüklemek için:\n"
+            f"{install_hint_plain}"
         )
         if HAS_RICH:
             console.print(Panel(msg, title="[bold yellow]Bağımlılık Uyarısı[/bold yellow]", border_style="yellow"))
@@ -412,7 +468,7 @@ def interactive_mode():
 def main():
     parser = argparse.ArgumentParser(
         prog="mp3fy",
-        description="MP3fy - Spotify Playlist/Album/Track to MP3 Converter with ID3 Metadata & Album Art (Linux CLI).",
+        description="MP3fy - Spotify Playlist/Album/Track to MP3 Converter with ID3 Metadata & Album Art (PowerShell & CLI).",
     )
     parser.add_argument(
         "url",
